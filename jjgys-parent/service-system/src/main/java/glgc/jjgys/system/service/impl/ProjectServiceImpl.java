@@ -1,0 +1,746 @@
+package glgc.jjgys.system.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import glgc.jjgys.model.project.*;
+import glgc.jjgys.model.system.*;
+import glgc.jjgys.system.mapper.ProjectMapper;
+import glgc.jjgys.system.mapper.SysUserMenuMapper;
+import glgc.jjgys.system.utils.ReceiveUtils;
+import glgc.jjgys.system.service.*;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.math.BigInteger;
+import java.util.*;
+
+@Slf4j
+@Service
+public class ProjectServiceImpl extends ServiceImpl<ProjectMapper, Project> implements ProjectService {
+
+    @Autowired
+    private ProjectMapper projectMapper;
+
+    @Autowired
+    private SysMenuService sysMenuService;
+
+    @Autowired
+    private SysUserService sysUserService;
+
+    @Autowired
+    private JjgHtdService jjgHtdService;
+
+    @Autowired
+    private JjgXmtjService jjgXmtjService;
+
+    @Override
+    public void addOtherInfo(Project project, String proName, String userid) {
+        QueryWrapper<SysUser> wrapperuser = new QueryWrapper<>();
+        wrapperuser.eq("id",userid);
+        List<SysUser> list1 = sysUserService.list(wrapperuser);
+        Long companyId = list1.get(0).getCompanyId();
+        SysMenu sysMenu = new SysMenu();
+
+        UUID uuid = UUID.randomUUID();
+        //long uniqId = uniqId();
+        //获取当前菜单的所属上级，先写死吧
+        sysMenu.setParentId(Long.parseLong("1600779312636739586"));//交工管理的id
+        sysMenu.setType(0);
+        sysMenu.setPath("gaosuName"+ uuid);
+        sysMenu.setComponent("ParentView");
+        sysMenu.setName(proName);
+        sysMenu.setIcon("el-icon-tickets");
+        sysMenu.setSortValue(2);
+        sysMenu.setCompanyId(companyId);
+        sysMenuService.save(sysMenu);
+
+        QueryWrapper<SysMenu> wrapper=new QueryWrapper<>();
+        wrapper.like("name",proName);
+        List<SysMenu> list = sysMenuService.list(wrapper);
+        Long gsid = list.get(0).getId();
+
+        //设置下级菜单
+        SysMenu htdSysMenu = new SysMenu();
+        htdSysMenu.setParentId(gsid);
+        htdSysMenu.setType(1);
+        htdSysMenu.setPath("htdInfo");
+        htdSysMenu.setComponent("sysproject/projectInfo/htdInfo");
+        htdSysMenu.setName("合同段信息");
+        htdSysMenu.setCompanyId(companyId);
+        htdSysMenu.setSortValue(1);
+
+        SysMenu lqsSysMenu = new SysMenu();
+        lqsSysMenu.setParentId(gsid);
+        lqsSysMenu.setType(1);
+        lqsSysMenu.setPath("lqsInfo");
+        lqsSysMenu.setComponent("sysproject/projectInfo/lqsInfo");
+        lqsSysMenu.setName("路桥隧信息");
+        lqsSysMenu.setSortValue(2);
+        lqsSysMenu.setCompanyId(companyId);
+
+
+        SysMenu xmjdSysMenu = new SysMenu();
+        xmjdSysMenu.setParentId(gsid);
+        xmjdSysMenu.setType(1);
+        xmjdSysMenu.setPath("xmjd");
+        xmjdSysMenu.setComponent("sysproject/projectInfo/xmjd");
+        xmjdSysMenu.setName("项目进度");
+        xmjdSysMenu.setSortValue(4);
+        xmjdSysMenu.setCompanyId(companyId);
+
+        SysMenu dpSysMenu = new SysMenu();
+        dpSysMenu.setParentId(gsid);
+        dpSysMenu.setType(1);
+        dpSysMenu.setPath("dp");
+        dpSysMenu.setComponent("sysproject/projectInfo/dp");
+        dpSysMenu.setName("数据可视化");
+        dpSysMenu.setSortValue(5);
+        dpSysMenu.setCompanyId(companyId);
+
+        SysMenu wgSysMenu = new SysMenu();
+        wgSysMenu.setParentId(gsid);
+        wgSysMenu.setType(1);
+        wgSysMenu.setPath("other");
+        wgSysMenu.setComponent("sysproject/projectInfo/other");
+        wgSysMenu.setName("其他信息");
+        wgSysMenu.setSortValue(6);
+        wgSysMenu.setCompanyId(companyId);
+
+        /*SysMenu nySysMenu = new SysMenu();
+        nySysMenu.setParentId(gsid);
+        nySysMenu.setType(1);
+        nySysMenu.setPath("dp");
+        nySysMenu.setComponent("sysproject/projectInfo/neyzl");
+        nySysMenu.setName("内页资料检查");
+        nySysMenu.setSortValue(7);*/
+
+
+        sysMenuService.save(htdSysMenu);
+        sysMenuService.save(lqsSysMenu);
+        sysMenuService.save(xmjdSysMenu);
+        sysMenuService.save(dpSysMenu);
+        sysMenuService.save(wgSysMenu);
+
+        Xmtj xmtj = new Xmtj();
+        xmtj.setProName(proName);
+        xmtj.setGldj(project.getGrade());
+        xmtj.setTze(project.getTze());
+        xmtj.setLxcd(project.getLxcd());
+        xmtj.setType("1");
+        jjgXmtjService.save(xmtj);
+        //sysMenuService.save(nySysMenu);
+        /*QueryWrapper<SysMenu> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("name",proName);
+        queryWrapper.eq("path","gaosuName"+ uuid);
+        List<SysMenu> list2 = sysMenuService.list(queryWrapper);
+        if (list2 != null){
+            Long id = list2.get(0).getId();
+            SysUserMenu userMenu = new SysUserMenu();
+            userMenu.setUserId(Long.valueOf(userid));
+            userMenu.setMenuId(id);
+            QueryWrapper<SysMenu> menuQueryWrapper = new QueryWrapper<>();
+            menuQueryWrapper.eq("parent_id",id);
+            List<SysMenu> list3 = sysMenuService.list(menuQueryWrapper);
+            if (list3 != null){
+                for (SysMenu menu : list3) {
+                    Long id1 = menu.getId();
+                    SysUserMenu sysUserMenu = new SysUserMenu();
+                    sysUserMenu.setUserId(Long.valueOf(userid));
+                    sysUserMenu.setMenuId(id1);
+                    sysUserMenuService.save(sysUserMenu);
+                }
+            }
+        }*/
+    }
+
+    @Autowired
+    private SysUserMenuService sysUserMenuService;
+
+    @Override
+    public void addptyhqx(String userid, String participant, String proName) {
+        //先查询公司的id
+        SysUser user = sysUserService.getById(userid);
+        Long companyId = user.getCompanyId();
+        //然后根据公司id，查询type是4的
+        QueryWrapper<SysUser> wrapper1 = new QueryWrapper<>();
+        wrapper1.eq("company_id",companyId);
+        List<SysUser> list = sysUserService.list(wrapper1);
+        if (list != null && list.size()>0){
+            for (SysUser sysUser : list) {
+                String username = sysUser.getUsername();
+                Long id = sysUser.getId();
+                String type = sysUser.getType();
+                if (participant.contains(username) && type.equals("3")){
+                    Long ptyhid = sysUser.getId();
+                    //查询添加项目后的菜单信息  直接根据项目名称拿
+                    QueryWrapper<SysMenu> menuQueryWrapper = new QueryWrapper<>();
+                    menuQueryWrapper.eq("name",proName);
+                    List<SysMenu> list1 = sysMenuService.list(menuQueryWrapper);
+                    //只会有一条数据吧
+                    Long id1 = list1.get(0).getId();
+                    QueryWrapper<SysMenu> menuQueryWrapper1 = new QueryWrapper<>();
+                    menuQueryWrapper1.eq("parent_id",id1);
+                    List<SysMenu> list2 = sysMenuService.list(menuQueryWrapper1);
+                    SysUserMenu userMenu = new SysUserMenu();
+                    userMenu.setId(uniqId());
+                    userMenu.setUserId(ptyhid);
+                    userMenu.setMenuId(id1);
+                    userMenu.setCreateTime(new Date());
+                    sysUserMenuService.save(userMenu);
+                    if (list2!=null && list2.size()>0){
+                        for (SysMenu sysMenu : list2) {
+                            SysUserMenu userMenu1 = new SysUserMenu();
+                            userMenu1.setId(uniqId());
+                            userMenu1.setUserId(ptyhid);
+                            userMenu1.setMenuId(sysMenu.getId());
+                            userMenu1.setCreateTime(new Date());
+                            sysUserMenuService.save(userMenu1);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+    /**
+     *
+     * @return
+     */
+    public long uniqId() {
+        Random random = new Random();
+        String nanoRandom = System.nanoTime() + "" + random.nextInt(99999);
+        int hash = Math.abs(UUID.randomUUID().hashCode());
+        int needAdd = 19 - String.valueOf(hash).length() + 1;
+
+        BigInteger bigInteger = new BigInteger(hash + "" + nanoRandom.substring(needAdd));
+        BigInteger longMaxValue = BigInteger.valueOf(Long.MAX_VALUE);
+        BigInteger longMinValue = BigInteger.valueOf(Long.MIN_VALUE);
+
+        // Check if the generated BigInteger is higher than Long.MAX_VALUE
+        if (bigInteger.compareTo(longMaxValue) >= 0) {
+            bigInteger = bigInteger.mod(longMaxValue);
+        }
+        // Check if the generated BigInteger is lower than Long.MIN_VALUE
+        else if (bigInteger.compareTo(longMinValue) <= 0) {
+            bigInteger = bigInteger.mod(longMaxValue).add(longMaxValue);
+        }
+
+        long aLong = bigInteger.longValue();
+
+        return aLong;
+    }
+
+    @Override
+    public Integer getlevel(String proname) {
+        QueryWrapper<Project> wrapper=new QueryWrapper<>();
+        wrapper.like("proname",proname);
+        Project project = projectMapper.selectOne(wrapper);
+        String grade = project.getGrade();
+        int g = 0;
+        if (grade.equals("高速公路") || grade.equals("一级公路")){
+            g = 0;
+        }else if (grade.equals("二级公路") || grade.equals("三级公路") || grade.equals("四级公路")){
+            g = 1;
+        }
+        //Integer integer = Integer.valueOf(grade);
+        return g;
+    }
+
+    @Autowired
+    private JjgLqsQlService jjgLqsQlService;
+    @Autowired
+    private JjgLqsSdService jjgLqsSdService;
+    @Autowired
+    private JjgLqsFhlmService jjgLqsFhlmService;
+    @Autowired
+    private JjgLqsHntlmzdService jjgLqsHntlmzdService;
+    @Autowired
+    private JjgLqsSfzService jjgLqsSfzService;
+    @Autowired
+    private JjgLqsLjxService jjgLqsLjxService;
+
+    @Autowired
+    private JjgWgjcService jjgWgjcService;
+
+    @Autowired
+    private JjgFbgcLjgcHdgqdService jjgFbgcLjgcHdgqdService;
+
+    @Autowired
+    private JjgFbgcLjgcHdjgccService jjgFbgcLjgcHdjgccService;
+
+    @Autowired
+    private JjgFbgcLjgcLjbpService jjgFbgcLjgcLjbpService;
+
+    @Autowired
+    private JjgFbgcLjgcLjcjService jjgFbgcLjgcLjcjService;
+
+    @Autowired
+    private JjgFbgcLjgcLjtsfysdHtService jjgFbgcLjgcLjtsfysdHtService;
+
+    @Autowired
+    private JjgFbgcLjgcLjtsfysdSlService jjgFbgcLjgcLjtsfysdSlService;
+
+    @Autowired
+    private JjgFbgcLjgcLjwcService jjgFbgcLjgcLjwcService;
+
+    @Autowired
+    private JjgFbgcLjgcLjwcLcfService jjgFbgcLjgcLjwcLcfService;
+
+    @Autowired
+    private JjgFbgcLjgcPsdmccService jjgFbgcLjgcPsdmccService;
+
+    @Autowired
+    private JjgFbgcLjgcPspqhdService jjgFbgcLjgcPspqhdService;
+
+    @Autowired
+    private JjgFbgcLjgcXqgqdService jjgFbgcLjgcXqgqdService;
+
+    @Autowired
+    private JjgFbgcLjgcXqjgccService jjgFbgcLjgcXqjgccService;
+
+    @Autowired
+    private JjgFbgcLjgcZddmccService jjgFbgcLjgcZddmccService;
+
+    @Autowired
+    private JjgFbgcLjgcZdgqdService jjgFbgcLjgcZdgqdService;
+
+    @Autowired
+    private JjgFbgcLmgcGslqlmhdzxfService jjgFbgcLmgcGslqlmhdzxfService;
+
+    @Autowired
+    private JjgFbgcLmgcHntlmhdzxfService jjgFbgcLmgcHntlmhdzxfService;
+
+    @Autowired
+    private JjgFbgcLmgcHntlmqdService jjgFbgcLmgcHntlmqdService;
+
+    @Autowired
+    private JjgFbgcLmgcLmgzsdsgpsfService jjgFbgcLmgcLmgzsdsgpsfService;
+
+    @Autowired
+    private JjgFbgcLmgcLmhpService jjgFbgcLmgcLmhpService;
+
+    @Autowired
+    private JjgFbgcLmgcLmssxsService jjgFbgcLmgcLmssxsService;
+
+    @Autowired
+    private JjgFbgcLmgcLmwcService jjgFbgcLmgcLmwcService;
+
+    @Autowired
+    private JjgFbgcLmgcLmwcLcfService jjgFbgcLmgcLmwcLcfService;
+
+    @Autowired
+    private JjgFbgcLmgcLqlmysdService jjgFbgcLmgcLqlmysdService;
+
+    @Autowired
+    private JjgFbgcLmgcTlmxlbgcService jjgFbgcLmgcTlmxlbgcService;
+
+    @Autowired
+    private JjgFbgcJtaqssJabxService jjgFbgcJtaqssJabxService;
+
+    @Autowired
+    private JjgFbgcJtaqssJabxfhlService jjgFbgcJtaqssJabxfhlService;
+
+    @Autowired
+    private JjgFbgcJtaqssJabzService jjgFbgcJtaqssJabzService;
+
+    @Autowired
+    private JjgFbgcJtaqssJathldmccService jjgFbgcJtaqssJathldmccService;
+
+    @Autowired
+    private JjgFbgcJtaqssJathlqdService jjgFbgcJtaqssJathlqdService;
+
+    @Autowired
+    private JjgFbgcQlgcXbTqdService jjgFbgcQlgcXbTqdService;
+
+    @Autowired
+    private JjgFbgcQlgcXbJgccService jjgFbgcQlgcXbJgccService;
+
+    @Autowired
+    private JjgFbgcQlgcXbBhchdService jjgFbgcQlgcXbBhchdService;
+
+    @Autowired
+    private JjgFbgcQlgcXbSzdService jjgFbgcQlgcXbSzdService;
+
+    @Autowired
+    private JjgFbgcQlgcSbTqdService jjgFbgcQlgcSbTqdService;
+
+    @Autowired
+    private JjgFbgcQlgcSbJgccService jjgFbgcQlgcSbJgccService;
+
+    @Autowired
+    private JjgFbgcQlgcSbBhchdService jjgFbgcQlgcSbBhchdService;
+
+    @Autowired
+    private JjgFbgcSdgcCqtqdService jjgFbgcSdgcCqtqdService;
+
+    @Autowired
+    private JjgFbgcSdgcDmpzdService jjgFbgcSdgcDmpzdService;
+
+    @Autowired
+    private JjgFbgcSdgcZtkdService jjgFbgcSdgcZtkdService;
+
+    @Autowired
+    private JjgFbgcQlgcQmpzdService jjgFbgcQlgcQmpzdService;
+
+    @Autowired
+    private JjgFbgcQlgcQmhpService jjgFbgcQlgcQmhpService;
+
+    @Autowired
+    private JjgFbgcQlgcQmgzsdService jjgFbgcQlgcQmgzsdService;
+
+    @Autowired
+    private JjgFbgcSdgcCqhdService jjgFbgcSdgcCqhdService;
+
+    @Autowired
+    private JjgFbgcSdgcSdlqlmysdService jjgFbgcSdgcSdlqlmysdService;
+
+    @Autowired
+    private JjgFbgcSdgcLmssxsService jjgFbgcSdgcLmssxsService;
+
+    @Autowired
+    private JjgFbgcSdgcHntlmqdService jjgFbgcSdgcHntlmqdService;
+
+    @Autowired
+    private JjgFbgcSdgcTlmxlbgcService jjgFbgcSdgcTlmxlbgcService;
+
+    @Autowired
+    private JjgFbgcSdgcSdhpService jjgFbgcSdgcSdhpService;
+
+    @Autowired
+    private JjgFbgcSdgcSdhntlmhdzxfService jjgFbgcSdgcSdhntlmhdzxfService;
+
+    @Autowired
+    private JjgFbgcSdgcGssdlqlmhdzxfService jjgFbgcSdgcGssdlqlmhdzxfService;
+
+    @Autowired
+    private JjgFbgcSdgcLmgzsdsgpsfService jjgFbgcSdgcLmgzsdsgpsfService;
+
+    @Autowired
+    private JjgLookProjectPlanService jjgLookProjectPlanService;
+
+    @Autowired
+    private SysUserMenuMapper sysUserMenuMapper;
+
+
+
+
+    @Override
+    public void deleteOtherInfo(List<String> idList) {//idList是项目的id
+        //先删菜单信息
+        for (String id : idList) {
+            //根据id查询项目信息
+            QueryWrapper<Project> wrapper=new QueryWrapper<>();
+            wrapper.eq("id",id);
+            Project project = projectMapper.selectOne(wrapper);
+            String proName = project.getProName();
+            SysMenu sysMenu = sysMenuService.selectcdinfo(proName);
+            Long proid = sysMenu.getId();
+
+            //删除sys_role_menu表中的信息，得拿到proid下面所有得信息
+            List<SysMenu> allHtd = sysMenuService.getAllHtd(proid);
+            Long parentId = sysMenu.getParentId();
+            List<Long> ids = new ArrayList<>();
+            ids.add(proid);
+            //ids.add(parentId);
+            if (allHtd != null){
+                for (SysMenu menu : allHtd) {
+                    Long id1 = menu.getId();
+                    ids.add(id1);
+                }
+            }
+            if (ids!=null){
+                for (Long aLong : ids) {
+                    /*QueryWrapper<SysRoleMenu> sysRoleMenuQueryWrapper = new QueryWrapper<>();
+                    sysRoleMenuQueryWrapper.eq("menu_id",aLong);
+                    sysRoleMenuMapper.delete(sysRoleMenuQueryWrapper);*/
+                    //删除sys_role_menu表中的数据
+                    QueryWrapper<SysUserMenu> queryWrapper = new QueryWrapper<>();
+                    queryWrapper.eq("menu_id",aLong);
+                    sysUserMenuMapper.delete(queryWrapper);
+                }
+            }
+            //实测数据，合同段信息，路桥隧信息
+
+            //先删实测数据下面的  name=实测数据，parent_id=proid
+            SysMenu scChildrenMenu = sysMenuService.getscChildrenMenu(proid);
+            if (scChildrenMenu !=null){
+                Long scid = scChildrenMenu.getId();
+                //合同段的菜单数据
+                List<SysMenu> htdlist = sysMenuService.getAllHtd(scid);
+                log.info("删除{}的分部工程和合同段菜单",project.getProName());
+                sysMenuService.removeFbgc(htdlist);//至此，分部工程和合同段的数据删除了
+            }
+            QueryWrapper<Xmtj> queryWrapperxm = new QueryWrapper<>();
+            queryWrapperxm.eq("proname",proName);
+            jjgXmtjService.remove(queryWrapperxm);
+
+            //然后删除 实测数据，合同段信息，路桥隧信息
+            log.info("删除{}的实测数据，合同段信息和路桥隧信息菜单",project.getProName());
+            sysMenuService.delectChildrenMenu(proid);
+            log.info("删除{}的菜单",project.getProName());
+            sysMenuService.removeById(proid);
+
+            log.info("删除{}的在合同段表中的数据",proName);
+            QueryWrapper<JjgHtd> htdwrapper=new QueryWrapper<>();
+            htdwrapper.eq("proname",proName);
+            jjgHtdService.remove(htdwrapper);
+
+            log.info("删除{}的在路桥隧表中的数据",proName);
+            QueryWrapper<JjgLqsQl> qlwrapper=new QueryWrapper<>();
+            qlwrapper.eq("proname",proName);
+            jjgLqsQlService.remove(qlwrapper);
+            QueryWrapper<JjgLqsSd> sdwrapper=new QueryWrapper<>();
+            sdwrapper.eq("proname",proName);
+            jjgLqsSdService.remove(sdwrapper);
+            QueryWrapper<JjgLqsFhlm> fhlmwrapper=new QueryWrapper<>();
+            fhlmwrapper.eq("proname",proName);
+            jjgLqsFhlmService.remove(fhlmwrapper);
+            QueryWrapper<JjgLqsHntlmzd> hntlmzdwrapper=new QueryWrapper<>();
+            hntlmzdwrapper.eq("proname",proName);
+            jjgLqsHntlmzdService.remove(hntlmzdwrapper);
+            QueryWrapper<JjgSfz> sfzwrapper=new QueryWrapper<>();
+            sfzwrapper.eq("proname",proName);
+            jjgLqsSfzService.remove(sfzwrapper);
+            // 补充删除连接线清单数据
+            QueryWrapper<JjgLjx> ljxWrapper=new QueryWrapper<>();
+            ljxWrapper.eq("proname",proName);
+            jjgLqsLjxService.remove(ljxWrapper);
+
+            log.info("删除{}在项目表中的数据",proName);
+            projectMapper.deleteById(id);
+            log.info("删除{}的项目指标进度数据",proName);
+            QueryWrapper<JjgPlaninfo> xmjhwrapper=new QueryWrapper<>();
+            xmjhwrapper.eq("proname",proName);
+            jjgLookProjectPlanService.remove(xmjhwrapper);
+            log.info("删除{}在各个表中的实测数据",proName);
+            // 补充删除外观检查表的数据
+            QueryWrapper<JjgWgjc> wgjcWrapper=new QueryWrapper<>();
+            wgjcWrapper.eq("proname",proName);
+            jjgWgjcService.remove(wgjcWrapper);
+
+            QueryWrapper<JjgFbgcLmgcGslqlmhdzxf> gslqlmhdzxfWrapper=new QueryWrapper<>();
+            gslqlmhdzxfWrapper.eq("proname",proName);
+            jjgFbgcLmgcGslqlmhdzxfService.remove(gslqlmhdzxfWrapper);
+
+            QueryWrapper<JjgFbgcLmgcHntlmhdzxf> hntlmhdzxfWrapper=new QueryWrapper<>();
+            hntlmhdzxfWrapper.eq("proname",proName);
+            jjgFbgcLmgcHntlmhdzxfService.remove(hntlmhdzxfWrapper);
+
+            QueryWrapper<JjgFbgcLmgcHntlmqd> hntlmqdWrapper=new QueryWrapper<>();
+            hntlmqdWrapper.eq("proname",proName);
+            jjgFbgcLmgcHntlmqdService.remove(hntlmqdWrapper);
+
+            QueryWrapper<JjgFbgcLmgcLmgzsdsgpsf> lmgzsdsgpsfWrapper=new QueryWrapper<>();
+            lmgzsdsgpsfWrapper.eq("proname",proName);
+            jjgFbgcLmgcLmgzsdsgpsfService.remove(lmgzsdsgpsfWrapper);
+
+            QueryWrapper<JjgFbgcLmgcLmhp> lmhpWrapper=new QueryWrapper<>();
+            lmhpWrapper.eq("proname",proName);
+            jjgFbgcLmgcLmhpService.remove(lmhpWrapper);
+
+            QueryWrapper<JjgFbgcLmgcLmssxs> lmssxsWrapper=new QueryWrapper<>();
+            lmssxsWrapper.eq("proname",proName);
+            jjgFbgcLmgcLmssxsService.remove(lmssxsWrapper);
+
+            QueryWrapper<JjgFbgcLmgcLmwc> lmwcWrapper=new QueryWrapper<>();
+            lmwcWrapper.eq("proname",proName);
+            jjgFbgcLmgcLmwcService.remove(lmwcWrapper);
+
+            QueryWrapper<JjgFbgcLmgcLmwcLcf> lmwclcfWrapper=new QueryWrapper<>();
+            lmwclcfWrapper.eq("proname",proName);
+            jjgFbgcLmgcLmwcLcfService.remove(lmwclcfWrapper);
+
+            QueryWrapper<JjgFbgcLmgcLqlmysd> lqlmysdWrapper=new QueryWrapper<>();
+            lqlmysdWrapper.eq("proname",proName);
+            jjgFbgcLmgcLqlmysdService.remove(lqlmysdWrapper);
+
+            QueryWrapper<JjgFbgcLmgcTlmxlbgc> tlmxlbgcWrapper=new QueryWrapper<>();
+            tlmxlbgcWrapper.eq("proname",proName);
+            jjgFbgcLmgcTlmxlbgcService.remove(tlmxlbgcWrapper);
+
+            QueryWrapper<JjgFbgcLjgcHdgqd> hdgqdWrapper=new QueryWrapper<>();
+            hdgqdWrapper.eq("proname",proName);
+            jjgFbgcLjgcHdgqdService.remove(hdgqdWrapper);
+
+            QueryWrapper<JjgFbgcLjgcHdjgcc> hdjgccWrapper=new QueryWrapper<>();
+            hdjgccWrapper.eq("proname",proName);
+            jjgFbgcLjgcHdjgccService.remove(hdjgccWrapper);
+
+            QueryWrapper<JjgFbgcLjgcLjbp> ljbpWrapper=new QueryWrapper<>();
+            ljbpWrapper.eq("proname",proName);
+            jjgFbgcLjgcLjbpService.remove(ljbpWrapper);
+
+            QueryWrapper<JjgFbgcLjgcLjcj> ljcjWrapper=new QueryWrapper<>();
+            ljcjWrapper.eq("proname",proName);
+            jjgFbgcLjgcLjcjService.remove(ljcjWrapper);
+
+            QueryWrapper<JjgFbgcLjgcLjtsfysdHt> ljtsfysdHtWrapper=new QueryWrapper<>();
+            ljtsfysdHtWrapper.eq("proname",proName);
+            jjgFbgcLjgcLjtsfysdHtService.remove(ljtsfysdHtWrapper);
+
+            QueryWrapper<JjgFbgcLjgcLjtsfysdSl> ljtsfysdslWrapper=new QueryWrapper<>();
+            ljtsfysdslWrapper.eq("proname",proName);
+            jjgFbgcLjgcLjtsfysdSlService.remove(ljtsfysdslWrapper);
+
+            QueryWrapper<JjgFbgcLjgcLjwc> ljwcWrapper=new QueryWrapper<>();
+            ljwcWrapper.eq("proname",proName);
+            jjgFbgcLjgcLjwcService.remove(ljwcWrapper);
+
+            QueryWrapper<JjgFbgcLjgcLjwcLcf> ljwclcfWrapper=new QueryWrapper<>();
+            ljwclcfWrapper.eq("proname",proName);
+            jjgFbgcLjgcLjwcLcfService.remove(ljwclcfWrapper);
+
+            QueryWrapper<JjgFbgcLjgcPsdmcc> psdmccWrapper=new QueryWrapper<>();
+            psdmccWrapper.eq("proname",proName);
+            jjgFbgcLjgcPsdmccService.remove(psdmccWrapper);
+
+            QueryWrapper<JjgFbgcLjgcPspqhd> pspqhdWrapper=new QueryWrapper<>();
+            pspqhdWrapper.eq("proname",proName);
+            jjgFbgcLjgcPspqhdService.remove(pspqhdWrapper);
+
+            QueryWrapper<JjgFbgcLjgcXqgqd> xqgqdWrapper=new QueryWrapper<>();
+            xqgqdWrapper.eq("proname",proName);
+            jjgFbgcLjgcXqgqdService.remove(xqgqdWrapper);
+
+            QueryWrapper<JjgFbgcLjgcXqjgcc> xqjgccWrapper=new QueryWrapper<>();
+            xqjgccWrapper.eq("proname",proName);
+            jjgFbgcLjgcXqjgccService.remove(xqjgccWrapper);
+
+            QueryWrapper<JjgFbgcLjgcZddmcc> zddmccWrapper=new QueryWrapper<>();
+            zddmccWrapper.eq("proname",proName);
+            jjgFbgcLjgcZddmccService.remove(zddmccWrapper);
+
+            QueryWrapper<JjgFbgcLjgcZdgqd> zdgqdWrapper=new QueryWrapper<>();
+            zdgqdWrapper.eq("proname",proName);
+            jjgFbgcLjgcZdgqdService.remove(zdgqdWrapper);
+
+            QueryWrapper<JjgFbgcJtaqssJabx> jabxWrapper=new QueryWrapper<>();
+            jabxWrapper.eq("proname",proName);
+            jjgFbgcJtaqssJabxService.remove(jabxWrapper);
+
+            QueryWrapper<JjgFbgcJtaqssJabxfhl> jabxfhlWrapper=new QueryWrapper<>();
+            jabxfhlWrapper.eq("proname",proName);
+            jjgFbgcJtaqssJabxfhlService.remove(jabxfhlWrapper);
+
+            QueryWrapper<JjgFbgcJtaqssJabz> jabzWrapper=new QueryWrapper<>();
+            jabzWrapper.eq("proname",proName);
+            jjgFbgcJtaqssJabzService.remove(jabzWrapper);
+
+            QueryWrapper<JjgFbgcJtaqssJathldmcc> jathldmccWrapper=new QueryWrapper<>();
+            jathldmccWrapper.eq("proname",proName);
+            jjgFbgcJtaqssJathldmccService.remove(jathldmccWrapper);
+
+            QueryWrapper<JjgFbgcJtaqssJathlqd> jathlqdWrapper=new QueryWrapper<>();
+            jathlqdWrapper.eq("proname",proName);
+            jjgFbgcJtaqssJathlqdService.remove(jathlqdWrapper);
+
+            QueryWrapper<JjgFbgcQlgcXbTqd> xbtqdWrapper=new QueryWrapper<>();
+            xbtqdWrapper.eq("proname",proName);
+            jjgFbgcQlgcXbTqdService.remove(xbtqdWrapper);
+
+            QueryWrapper<JjgFbgcQlgcXbJgcc> xbjgccWrapper=new QueryWrapper<>();
+            xbjgccWrapper.eq("proname",proName);
+            jjgFbgcQlgcXbJgccService.remove(xbjgccWrapper);
+
+            QueryWrapper<JjgFbgcQlgcXbBhchd> xbBhchdWrapper=new QueryWrapper<>();
+            xbBhchdWrapper.eq("proname",proName);
+            jjgFbgcQlgcXbBhchdService.remove(xbBhchdWrapper);
+
+            QueryWrapper<JjgFbgcQlgcXbSzd> xbSzdWrapper=new QueryWrapper<>();
+            xbSzdWrapper.eq("proname",proName);
+            jjgFbgcQlgcXbSzdService.remove(xbSzdWrapper);
+
+            QueryWrapper<JjgFbgcQlgcSbTqd> sbTqdWrapper=new QueryWrapper<>();
+            sbTqdWrapper.eq("proname",proName);
+            jjgFbgcQlgcSbTqdService.remove(sbTqdWrapper);
+
+            QueryWrapper<JjgFbgcQlgcSbJgcc> sbJgccWrapper=new QueryWrapper<>();
+            sbJgccWrapper.eq("proname",proName);
+            jjgFbgcQlgcSbJgccService.remove(sbJgccWrapper);
+
+            QueryWrapper<JjgFbgcQlgcSbBhchd> sbBhchdWrapper=new QueryWrapper<>();
+            sbBhchdWrapper.eq("proname",proName);
+            jjgFbgcQlgcSbBhchdService.remove(sbBhchdWrapper);
+
+            QueryWrapper<JjgFbgcQlgcQmpzd> qmpzdWrapper=new QueryWrapper<>();
+            qmpzdWrapper.eq("proname",proName);
+            jjgFbgcQlgcQmpzdService.remove(qmpzdWrapper);
+
+            QueryWrapper<JjgFbgcQlgcQmhp> qmhpWrapper=new QueryWrapper<>();
+            qmhpWrapper.eq("proname",proName);
+            jjgFbgcQlgcQmhpService.remove(qmhpWrapper);
+
+            QueryWrapper<JjgFbgcQlgcQmgzsd> qmgzsdWrapper=new QueryWrapper<>();
+            qmgzsdWrapper.eq("proname",proName);
+            jjgFbgcQlgcQmgzsdService.remove(qmgzsdWrapper);
+
+            QueryWrapper<JjgFbgcSdgcCqtqd> cqtqdWrapper=new QueryWrapper<>();
+            cqtqdWrapper.eq("proname",proName);
+            jjgFbgcSdgcCqtqdService.remove(cqtqdWrapper);
+
+            QueryWrapper<JjgFbgcSdgcDmpzd> dmpzdWrapper=new QueryWrapper<>();
+            dmpzdWrapper.eq("proname",proName);
+            jjgFbgcSdgcDmpzdService.remove(dmpzdWrapper);
+
+            QueryWrapper<JjgFbgcSdgcZtkd> ztkdQueryWrapper=new QueryWrapper<>();
+            ztkdQueryWrapper.eq("proname",proName);
+            jjgFbgcSdgcZtkdService.remove(ztkdQueryWrapper);
+
+            QueryWrapper<JjgFbgcSdgcCqhd> cqhdQueryWrapper=new QueryWrapper<>();
+            cqhdQueryWrapper.eq("proname",proName);
+            jjgFbgcSdgcCqhdService.remove(cqhdQueryWrapper);
+
+            QueryWrapper<JjgFbgcSdgcSdlqlmysd> sdlqlmysdQueryWrapper=new QueryWrapper<>();
+            sdlqlmysdQueryWrapper.eq("proname",proName);
+            jjgFbgcSdgcSdlqlmysdService.remove(sdlqlmysdQueryWrapper);
+
+            QueryWrapper<JjgFbgcSdgcLmssxs> lmssxsQueryWrapper=new QueryWrapper<>();
+            lmssxsQueryWrapper.eq("proname",proName);
+            jjgFbgcSdgcLmssxsService.remove(lmssxsQueryWrapper);
+
+            QueryWrapper<JjgFbgcSdgcHntlmqd> hntlmqdQueryWrapper=new QueryWrapper<>();
+            hntlmqdQueryWrapper.eq("proname",proName);
+            jjgFbgcSdgcHntlmqdService.remove(hntlmqdQueryWrapper);
+
+            QueryWrapper<JjgFbgcSdgcTlmxlbgc> tlmxlbgcQueryWrapper=new QueryWrapper<>();
+            tlmxlbgcQueryWrapper.eq("proname",proName);
+            jjgFbgcSdgcTlmxlbgcService.remove(tlmxlbgcQueryWrapper);
+
+            QueryWrapper<JjgFbgcSdgcSdhp> sdhpQueryWrapper=new QueryWrapper<>();
+            sdhpQueryWrapper.eq("proname",proName);
+            jjgFbgcSdgcSdhpService.remove(sdhpQueryWrapper);
+
+            QueryWrapper<JjgFbgcSdgcSdhntlmhdzxf> sdhntlmhdzxfQueryWrapper=new QueryWrapper<>();
+            sdhntlmhdzxfQueryWrapper.eq("proname",proName);
+            jjgFbgcSdgcSdhntlmhdzxfService.remove(sdhntlmhdzxfQueryWrapper);
+
+            QueryWrapper<JjgFbgcSdgcGssdlqlmhdzxf> gssdlqlmhdzxfQueryWrapper=new QueryWrapper<>();
+            gssdlqlmhdzxfQueryWrapper.eq("proname",proName);
+            jjgFbgcSdgcGssdlqlmhdzxfService.remove(gssdlqlmhdzxfQueryWrapper);
+
+            QueryWrapper<JjgFbgcSdgcLmgzsdsgpsf> lmgzsdsgpsfQueryWrapper=new QueryWrapper<>();
+            lmgzsdsgpsfQueryWrapper.eq("proname",proName);
+            jjgFbgcSdgcLmgzsdsgpsfService.remove(lmgzsdsgpsfQueryWrapper);
+
+        }
+
+    }
+
+    @Override
+    public String getGrade(String proname) {
+        QueryWrapper<Project> wrapper=new QueryWrapper<>();
+        wrapper.like("proname",proname);
+        Project project = projectMapper.selectOne(wrapper);
+        String grade = project.getGrade();
+        return grade;
+    }
+
+    @Override
+    public List<SysMenu> projectsTree(List<SysMenu> nodes) {
+        return ReceiveUtils.getProjectsTree(nodes);
+    }
+
+
+}

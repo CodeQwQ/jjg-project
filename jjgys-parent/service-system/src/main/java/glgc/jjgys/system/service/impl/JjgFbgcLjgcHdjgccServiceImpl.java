@@ -1,0 +1,530 @@
+package glgc.jjgys.system.service.impl;
+
+import com.alibaba.excel.EasyExcel;
+import com.alibaba.excel.exception.ExcelAnalysisException;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import glgc.jjgys.common.excel.ExcelUtil;
+import glgc.jjgys.model.project.JjgFbgcLjgcHdjgcc;
+import glgc.jjgys.model.projectvo.ljgc.CommonInfoVo;
+import glgc.jjgys.model.projectvo.ljgc.JjgFbgcLjgcHdjgccVo;
+import glgc.jjgys.model.system.SysUser;
+import glgc.jjgys.system.easyexcel.ExcelHandler;
+import glgc.jjgys.system.exception.JjgysException;
+import glgc.jjgys.system.mapper.JjgFbgcLjgcHdjgccMapper;
+import glgc.jjgys.system.service.JjgFbgcLjgcHdjgccService;
+import glgc.jjgys.system.service.SysUserService;
+import glgc.jjgys.system.utils.JjgFbgcCommonUtils;
+import glgc.jjgys.system.utils.RowCopy;
+import glgc.jjgys.system.utils.StringUtils;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.usermodel.*;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import glgc.jjgys.system.utils.ReceiveUtils;
+import javax.servlet.http.HttpServletResponse;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.text.DecimalFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.*;
+
+/**
+ * <p>
+ *  服务实现类
+ * </p>
+ *
+ * @author wq
+ * @since 2023-02-08
+ */
+@Service
+public class JjgFbgcLjgcHdjgccServiceImpl extends ServiceImpl<JjgFbgcLjgcHdjgccMapper, JjgFbgcLjgcHdjgcc> implements JjgFbgcLjgcHdjgccService {
+
+    @Value(value = "${jjgys.path.filepath}")
+    private String filepath;
+
+    private static XSSFWorkbook wb = null;
+
+    @Autowired
+    private JjgFbgcLjgcHdjgccMapper jjgFbgcLjgcHdjgccMapper;
+
+    @Autowired
+    private SysUserService sysUserService;
+
+
+
+    @Override
+    public boolean generateJdb(CommonInfoVo commonInfoVo) throws Exception {
+        String proname = commonInfoVo.getProname();
+        String htd = commonInfoVo.getHtd();
+        String fbgc = commonInfoVo.getFbgc();
+        //获得数据
+        QueryWrapper<JjgFbgcLjgcHdjgcc> wrapper=new QueryWrapper<>();
+        wrapper.eq("proname",proname);
+        wrapper.eq("htd",htd);
+        wrapper.eq("fbgc",fbgc);
+        String userid = commonInfoVo.getUserid();
+
+        //查询用户类型
+        QueryWrapper<SysUser> wrapperuser = new QueryWrapper<>();
+        wrapperuser.eq("id",userid);
+        SysUser one = sysUserService.getOne(wrapperuser);
+        String type = one.getType();
+        if ("2".equals(type) || "4".equals(type)){
+            //公司管理员
+            Long deptId = one.getDeptId();
+            QueryWrapper<SysUser> wrapperid = new QueryWrapper<>();
+            wrapperid.eq("dept_id",deptId);
+            List<SysUser> list = sysUserService.list(wrapperid);
+            //拿到部门下所有用户的id
+            List<Long> idlist = new ArrayList<>();
+
+            if (list!=null){
+                for (SysUser user : list) {
+                    Long id = user.getId();
+                    idlist.add(id);
+                }
+            }
+            wrapper.in("userid",idlist);
+        }else if ("3".equals(type)){
+            //普通用户
+            wrapper.like("userid",userid);
+        }
+        wrapper.orderByAsc("zh","bw","lb");
+        List<JjgFbgcLjgcHdjgcc> data = jjgFbgcLjgcHdjgccMapper.selectList(wrapper);
+//        System.out.println(data);
+        File f = new File(filepath+File.separator+proname+File.separator+htd+File.separator+"09路基涵洞结构尺寸.xlsx");
+        if (data == null || data.size()==0){
+            return false;
+        }else {
+            //存放鉴定表的目录
+            File fdir = new File(filepath+File.separator+proname+File.separator+htd);
+            if(!fdir.exists()){
+                //创建文件根目录
+                fdir.mkdirs();
+            }
+            try {
+                /*File directory = new File("service-system/src/main/resources/static");
+                String reportPath = directory.getCanonicalPath();
+                String name = "涵洞结构尺寸.xlsx";
+                String path =reportPath+File.separator+name;
+                Files.copy(Paths.get(path), new FileOutputStream(f));*/
+                InputStream inputStream = getClass().getClassLoader().getResourceAsStream("static/涵洞结构尺寸.xlsx");
+                Files.copy(inputStream, f.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                FileInputStream in = new FileInputStream(f);
+                wb = new XSSFWorkbook(in);
+                createTable(gettableNum(data.size()));
+                String sheetname = "涵洞结构尺寸";
+                if(DBtoExcel(data,proname,htd,fbgc,sheetname)){
+                    calculateSheet(wb.getSheet("涵洞结构尺寸"));
+                    for (int j = 0; j < wb.getNumberOfSheets(); j++) {   //表内公式  计算 显示结果
+                        JjgFbgcCommonUtils.updateFormula(wb, wb.getSheetAt(j));
+                    }
+                    FileOutputStream fileOut = new FileOutputStream(f);
+                    wb.write(fileOut);
+                    fileOut.flush();
+                    fileOut.close();
+                }
+                inputStream.close();
+                in.close();
+                wb.close();
+                return true;
+            }catch (Exception e) {
+                if(f.exists()){
+                    f.delete();
+                }
+                throw new JjgysException(20001, "生成鉴定表错误，请检查数据的正确性");
+            }
+        }
+    }
+
+    @Override
+    public void exporthdjgcc(HttpServletResponse response) {
+        File directory = new File("");// 参数为空
+        String courseFile = null;
+        try {
+            String fileName = "09涵洞结构尺寸实测数据";
+            String sheetName = "实测数据";
+            ExcelUtil.writeExcelWithSheets(response, null, fileName, sheetName, new JjgFbgcLjgcHdjgccVo()).finish();
+            courseFile = directory.getCanonicalPath();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }finally {
+            File t = new File(courseFile+File.separator+"09涵洞结构尺寸实测数据.xlsx");
+            if (t.exists()){
+                t.delete();
+            }
+        }
+    }
+
+    @Override
+    @Transactional
+    public void importhdjgcc(MultipartFile file, CommonInfoVo commonInfoVo) {
+        String htd = commonInfoVo.getHtd();
+        try {
+            EasyExcel.read(file.getInputStream())
+                    .sheet(0)
+                    .head(JjgFbgcLjgcHdjgccVo.class)
+                    .headRowNumber(1)
+                    .registerReadListener(
+                            new ExcelHandler<JjgFbgcLjgcHdjgccVo>(JjgFbgcLjgcHdjgccVo.class) {
+                                @Override
+                                public void handle(List<JjgFbgcLjgcHdjgccVo> dataList) {
+                                    int rowNumber=2;
+                                    for(JjgFbgcLjgcHdjgccVo hdjgccVo: dataList)
+                                    {
+                                        if (StringUtils.isEmpty(hdjgccVo.getZh())) {
+                                            throw new JjgysException(20001, "您上传的"+htd+"合同段中09涵洞结构尺寸实测数据.xlsx文件，第"+rowNumber+"行的数据中，桩号为空，请修改后重新上传");
+                                        }
+                                        if (StringUtils.isEmpty(hdjgccVo.getBw())) {
+                                            throw new JjgysException(20001, "您上传的"+htd+"合同段中09涵洞结构尺寸实测数据.xlsx文件，第"+rowNumber+"行的数据中，部位为空，请修改后重新上传");
+                                        }
+                                        if (StringUtils.isEmpty(hdjgccVo.getLb())) {
+                                            throw new JjgysException(20001, "您上传的"+htd+"合同段中09涵洞结构尺寸实测数据.xlsx文件，第"+rowNumber+"行的数据中，类别为空，请修改后重新上传");
+                                        }
+                                        if (!StringUtils.isNumeric(hdjgccVo.getSjz()) || StringUtils.isEmpty(hdjgccVo.getSjz())) {
+                                            throw new JjgysException(20001, "您上传的"+htd+"合同段中09涵洞结构尺寸实测数据.xlsx文件，第"+rowNumber+"行的数据中，设计值有误，请修改后重新上传");
+                                        }
+                                        if (!StringUtils.isNumeric(hdjgccVo.getScz()) || StringUtils.isEmpty(hdjgccVo.getScz())) {
+                                            throw new JjgysException(20001, "您上传的"+htd+"合同段中09涵洞结构尺寸实测数据.xlsx文件，第"+rowNumber+"行的数据中，实测值有误，请修改后重新上传");
+                                        }
+                                        JjgFbgcLjgcHdjgcc fbgcLjgcHdjgcc = new JjgFbgcLjgcHdjgcc();
+                                        BeanUtils.copyProperties(hdjgccVo,fbgcLjgcHdjgcc);
+                                        fbgcLjgcHdjgcc.setCreatetime(new Date());
+                                        fbgcLjgcHdjgcc.setUserid(commonInfoVo.getUserid());
+                                        fbgcLjgcHdjgcc.setProname(commonInfoVo.getProname());
+                                        fbgcLjgcHdjgcc.setHtd(commonInfoVo.getHtd());
+                                        fbgcLjgcHdjgcc.setFbgc(commonInfoVo.getFbgc());
+                                        jjgFbgcLjgcHdjgccMapper.insert(fbgcLjgcHdjgcc);
+                                        rowNumber++;
+                                    }
+                                }
+                            }
+                    ).doRead();
+        } catch (IOException e) {
+            throw new JjgysException(20001,"您上传的"+htd+"合同段中09涵洞结构尺寸实测数据.xlsx文件，解析excel出错，请传入正确格式的excel");
+        }catch (NullPointerException e) {
+            throw new JjgysException(20001,"您上传的"+htd+"合同段中09涵洞结构尺寸实测数据.xlsx文件，请检查数据的正确性或删除文件最后的空数据，然后重新上传");
+        }catch (ExcelAnalysisException e) {
+            throw new JjgysException(20001,"您上传的"+htd+"合同段中09涵洞结构尺寸实测数据.xlsx文件，请将检测日期修改为2021/01/01的格式，然后重新上传");
+        }
+
+    }
+
+    @Override
+    public List<Map<String, Object>> lookJdbjg(CommonInfoVo commonInfoVo) throws IOException {
+        DecimalFormat df = new DecimalFormat("0.00");
+        DecimalFormat decf = new DecimalFormat("0.##");
+        List<Map<String,Object>> mapList = new ArrayList<>();
+        Map<String,Object> jgmap = new HashMap<>();
+        String proname = commonInfoVo.getProname();
+        String htd = commonInfoVo.getHtd();
+        String sheetname = "涵洞结构尺寸";
+        //获取鉴定表文件
+        File f = new File(filepath+File.separator+proname+File.separator+htd+File.separator+"09路基涵洞结构尺寸.xlsx");
+        if(!f.exists()){
+            return null;
+        }else {
+            //创建工作簿
+            XSSFWorkbook xwb = new XSSFWorkbook(new FileInputStream(f));
+            //读取工作表
+            XSSFSheet slSheet = xwb.getSheet(sheetname);
+            if (slSheet != null) {
+                int lastRowNum = slSheet.getLastRowNum();
+                slSheet.getRow(lastRowNum-1).getCell(1).setCellType(CellType.STRING);
+                slSheet.getRow(lastRowNum-1).getCell(3).setCellType(CellType.STRING);
+                slSheet.getRow(lastRowNum-1).getCell(6).setCellType(CellType.STRING);
+                double zds= Double.valueOf(slSheet.getRow(lastRowNum-1).getCell(1).getStringCellValue());
+                double hgds= Double.valueOf(slSheet.getRow(lastRowNum-1).getCell(3).getStringCellValue());
+                double hgl= Double.valueOf(slSheet.getRow(lastRowNum-1).getCell(6).getStringCellValue());
+
+                String zdsz = decf.format(zds);
+                String hgdsz = decf.format(hgds);
+                String hglz = df.format(hgl);
+                jgmap.put("总点数", zdsz);
+                jgmap.put("合格点数", hgdsz);
+                jgmap.put("合格率", hglz);
+                mapList.add(jgmap);
+            } else {
+                return new ArrayList<>();
+            }
+            return mapList;
+        }
+    }
+
+    @Override
+    public List<String> selectyxps(String proname, String htd) {
+        List<String> yxpslist = jjgFbgcLjgcHdjgccMapper.selectyxps(proname,htd);
+        return yxpslist;
+    }
+
+    //判断要生成几个表格
+    public int gettableNum(int size){
+        return size%29 <= 27 ? size/29+1 : size/29+2;
+    }
+
+    //生成表格，并设置要打印的区域
+    public void createTable(int tableNum){
+        int record = 0;
+        record = tableNum;
+        for (int i = 1; i < record; i++) {
+            if(i < record-1){
+                RowCopy.copyRows(wb, "涵洞结构尺寸", "涵洞结构尺寸", 5, 33, (i - 1) * 29 + 34);
+            }
+            else{
+                RowCopy.copyRows(wb, "涵洞结构尺寸", "涵洞结构尺寸", 5, 31, (i - 1) * 29 + 34);
+            }
+        }
+        if(record == 1){
+            wb.getSheet("涵洞结构尺寸").shiftRows(33, 34, -1);
+        }
+        RowCopy.copyRows(wb, "source", "涵洞结构尺寸", 0, 1,(record) * 29 + 3);
+        //设置打印区域
+        wb.setPrintArea(wb.getSheetIndex("涵洞结构尺寸"), 0, 7, 0,(record) * 29 + 4);
+    }
+
+    /**
+     *
+     * @param data
+     * @param proname
+     * @param htd
+     * @param fbgc
+     * @param sheetname
+     * @return
+     * @throws Exception
+     */
+    public boolean DBtoExcel(List<JjgFbgcLjgcHdjgcc> data,String proname,String htd,String fbgc,String sheetname) throws Exception {
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy.MM.dd");
+        String testtime = simpleDateFormat.format(data.get(0).getJcsj());
+        for (JjgFbgcLjgcHdjgcc row:data){
+            try {
+                Date dt1 = simpleDateFormat.parse(testtime);
+                Date dt2 = simpleDateFormat.parse(simpleDateFormat.format(row.getJcsj()));
+                if(dt1.getTime() < dt2.getTime()){
+                    testtime = simpleDateFormat.format(row.getJcsj());
+                }
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+        }
+        XSSFSheet sheet = wb.getSheet(sheetname);
+        //填写表头数据
+        //fillTitleCellData();
+        sheet.getRow(1).getCell(1).setCellValue(proname);
+        sheet.getRow(1).getCell(6).setCellValue(htd);
+        sheet.getRow(2).getCell(1).setCellValue(fbgc);
+        sheet.getRow(2).getCell(6).setCellValue(testtime);//检测时间
+
+        String zh = data.get(0).getZh();
+        String bw = data.get(0).getBw();
+        String lb = data.get(0).getLb();
+        int start = 5;
+        int categroystart = 5;
+        int positionstart = 5;
+        int index = 0;
+        for(JjgFbgcLjgcHdjgcc row:data){
+            if(zh.equals(row.getZh())){
+                fillCommonCellData(sheet,index,row);
+                if(!bw.equals(row.getBw())){
+                    if(categroystart < 5 + index-1){
+                        sheet.addMergedRegion(new CellRangeAddress(categroystart, 5 + index-1 , 2, 2));
+                    }
+                    sheet.getRow(categroystart).getCell(2).setCellValue(lb);
+                    categroystart = index+5;
+                    lb = row.getLb();
+                    if(positionstart < 5 + index-1){
+                        sheet.addMergedRegion(new CellRangeAddress(positionstart, 5 + index-1 , 1, 1));
+                    }
+                    sheet.getRow(positionstart).getCell(1).setCellValue(bw);
+                    positionstart = index+5;
+                    bw = row.getBw();
+
+                }else {
+                    //部位相等的情况下  类别
+                    if(!lb.equals(row.getLb())){
+                        if(categroystart < 5 + index-1){
+                            sheet.addMergedRegion(new CellRangeAddress(categroystart, 5 + index-1 , 2, 2));
+                        }
+                        sheet.getRow(categroystart).getCell(2).setCellValue(lb);
+                        categroystart = index+5;
+                        lb = row.getLb();
+                    }
+                }
+                index++;
+            }else {
+                if(categroystart < 5 + index-1){
+                    sheet.addMergedRegion(new CellRangeAddress(categroystart, 5 + index-1 , 2, 2));
+                }
+                sheet.getRow(categroystart).getCell(2).setCellValue(lb);
+                categroystart = index+5;
+                lb = row.getLb();
+                if(positionstart < 5 + index-1){
+                    sheet.addMergedRegion(new CellRangeAddress(positionstart, 5 + index-1 , 1, 1));
+                }
+
+                sheet.getRow(positionstart).getCell(1).setCellValue(bw);
+                if(start < 5 + index-1){
+                    sheet.addMergedRegion(new CellRangeAddress(start, 5 + index-1 , 0, 0));
+                }
+
+                //sheet.getRow(start).getCell(0).setCellValue(row.getZh());
+                zh = row.getZh();
+                bw = row.getBw();
+                start = index+5;
+                positionstart = start;
+                categroystart = positionstart;
+                fillCommonCellData(sheet,index,row);
+                index ++;
+
+            }
+        }
+        if(categroystart < 5 + index-1){
+            sheet.addMergedRegion(new CellRangeAddress(categroystart, 5 + index-1 , 2, 2));
+        }
+
+        sheet.getRow(categroystart).getCell(2).setCellValue(lb);
+        if(positionstart < 5 + index-1){
+            sheet.addMergedRegion(new CellRangeAddress(positionstart, 5 + index-1 , 1, 1));
+        }
+
+        sheet.getRow(positionstart).getCell(1).setCellValue(bw);
+        if(start < 5 + index-1){
+            sheet.addMergedRegion(new CellRangeAddress(start, 5 + index-1 , 0, 0));
+        }
+
+        sheet.getRow(start).getCell(0).setCellValue(zh);
+        return true;
+    }
+
+
+    /**
+     *
+     * @param sheet
+     * @param index
+     * @param row
+     */
+    public void fillCommonCellData(XSSFSheet sheet, int index, JjgFbgcLjgcHdjgcc row) {
+        sheet.getRow(index+5).getCell(0).setCellValue(row.getZh());//桩号
+        sheet.getRow(index+5).getCell(1).setCellValue(row.getBw());//部位
+        sheet.getRow(index+5).getCell(2).setCellValue(row.getLb());//类别
+        sheet.getRow(index+5).getCell(3).setCellValue(Double.parseDouble(row.getSjz()));//设计值
+        sheet.getRow(index+5).getCell(4).setCellValue(Double.parseDouble(row.getScz()));//实测值
+        if(row.getYxwcz() != null && !"".equals(row.getYxwcz())&&row.getYxwcf() != null && !"".equals(row.getYxwcf()) && row.getYxwcz().equals(row.getYxwcf())){ //判空 且相等
+            //if(row.getYxwcf() == null){
+            if("0".equals(row.getYxwcf())){
+                sheet.getRow(index+5).getCell(5).setCellValue("不小于设计值");
+            }else if(!"不小于设计值".equals(row.getYxwcf()) && !"不小于设计值".equals(row.getYxwcz())){
+                sheet.getRow(index+5).getCell(5).setCellValue("±"+row.getYxwcz());
+            }
+            else{
+                sheet.getRow(index+5).getCell(5).setCellValue(row.getYxwcz());
+            }
+        } else if(row.getYxwcz()!=null && !"".equals(row.getYxwcz()) && row.getYxwcf()!=null && !"".equals(row.getYxwcf())){ //判空
+            sheet.getRow(index+5).getCell(5).setCellValue("+"+row.getYxwcz()+",-"+row.getYxwcf());
+        }else {
+            if(row.getYxwcz()==null||"".equals(row.getYxwcz())) {
+                sheet.getRow(index+5).getCell(5).setCellValue("-"+row.getYxwcf());
+            }else {
+                sheet.getRow(index+5).getCell(5).setCellValue(row.getYxwcz());
+            }
+        }
+    }
+
+    /**
+     *
+     * @param sheet
+     */
+    private void calculateSheet(XSSFSheet sheet) {
+        XSSFRow row = null;
+        XSSFRow rowstart = null;
+        XSSFRow rowend = null;
+        boolean flag = false;
+        XSSFCellStyle xssfCellStyle = JjgFbgcCommonUtils.dBtoExcelUtils(wb);
+        for (int i = sheet.getFirstRowNum(); i <= sheet.getPhysicalNumberOfRows(); i++) {
+            row = sheet.getRow(i);
+            System.out.println("z"+row.getRowNum());
+            if (row == null) {
+                continue;
+            }
+            if(flag && "检测总点数".equals(row.getCell(0).toString())){
+                rowend = sheet.getRow(i-1);
+                row.getCell(1).setCellFormula("COUNT("
+                        +rowstart.getCell(4).getReference()+":"
+                        +rowend.getCell(4).getReference()+")");//B32=COUNT(D6:D31) B=COUNT(E6:E68)
+                row.getCell(3).setCellFormula("COUNTIF("
+                        +rowstart.getCell(6).getReference()+":"
+                        +rowend.getCell(6).getReference()+",\"√\")");//D32=COUNTIF(H6:H31,"√") D=COUNTIF(G6:G34,"√")+COUNTIF(G41:G68,"√")
+                row.getCell(6).setCellFormula("ROUND("+
+                        row.getCell(3).getReference()+"/"
+                        +row.getCell(1).getReference()+"*100,1)");//H32=D32/B32*100 G=ROUND(D69/B69*100,1)
+                break;
+            }
+            if(flag && !"".equals(row.getCell(4).toString())){
+                if("不小于设计值".equals(row.getCell(5).toString())){
+                    row.getCell(6).setCellFormula("IF("
+                            +row.getCell(4).getReference()+">="
+                            +row.getCell(3).getReference()+",\"√\",\"\")");//G=IF((E41+30>=D41)*(E41-30<=D41),"√","")
+                    row.getCell(7).setCellFormula("IF("
+                            +row.getCell(6).getReference()+"=\"\""+",\"×\",\"\")");//H=IF((E41+30>=D41)*(E41-30<=D41),"","×")
+                }else if(!"不小于设计值".equals(row.getCell(5).toString()) &&
+                        !row.getCell(5).toString().contains(",") &&
+                        !row.getCell(5).toString().contains("±")){
+
+                    if(JjgFbgcCommonUtils.getAllowError3(row.getCell(5).toString()).contains("-")) {
+                        row.getCell(6).setCellFormula("IF("
+                                +row.getCell(4).getReference()+"-"+row.getCell(3).getReference()+">="
+                                +JjgFbgcCommonUtils.getAllowError3(row.getCell(5).toString())+",\"√\",\"\")");//G=IF((E41+30>=D41)*(E41-30<=D41),"√","")
+                    }else {
+                        row.getCell(6).setCellFormula("IF("
+                                +row.getCell(4).getReference()+"-"+row.getCell(3).getReference()+">="
+                                +JjgFbgcCommonUtils.getAllowError3(row.getCell(5).toString())+",\"√\",\"\")");//G=IF((E41+30>=D41)*(E41-30<=D41),"√","")
+                    }
+                    row.getCell(7).setCellFormula("IF("
+                            +row.getCell(6).getReference()+"=\"\""+",\"×\",\"\")");//H=IF((E41+30>=D41)*(E41-30<=D41),"","×")
+                }else{
+                    row.getCell(6).setCellFormula("IF(("
+                            +row.getCell(4).getReference()+"-"
+                            +JjgFbgcCommonUtils.getAllowError1(row.getCell(5).toString())+"<="
+                            +row.getCell(3).getReference()+")*("
+                            +row.getCell(4).getReference()+"+"
+                            +JjgFbgcCommonUtils.getAllowError2(row.getCell(5).toString())+">="
+                            +row.getCell(3).getReference()+"),\"√\",\"\")");
+                    row.getCell(7).setCellFormula("IF("
+                            +row.getCell(6).getReference()+"=\"\""+",\"×\",\"\")");
+                }
+                XSSFFormulaEvaluator evaluate = new XSSFFormulaEvaluator(wb);
+            }
+            if ("桩号".equals(row.getCell(0).toString())) {
+                rowstart = sheet.getRow(i+2);
+                rowend = rowstart;
+                i++;
+                flag = true;
+            }
+        }
+    }
+
+    @Override
+    public int selectnum(String proname, String htd) {
+        int selectnum = jjgFbgcLjgcHdjgccMapper.selectnum(proname, htd);
+        return selectnum;
+    }
+
+    @Override
+    public int selectnumname(String proname) {
+        int selectnum = jjgFbgcLjgcHdjgccMapper.selectnumname(proname);
+        return selectnum;
+    }
+
+    @Override
+    public int createMoreRecords(List<JjgFbgcLjgcHdjgcc> data, String userID) {
+        return ReceiveUtils.createMore(data, jjgFbgcLjgcHdjgccMapper, userID);
+    }
+
+}

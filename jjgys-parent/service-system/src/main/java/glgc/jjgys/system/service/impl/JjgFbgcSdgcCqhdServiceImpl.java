@@ -1,0 +1,970 @@
+package glgc.jjgys.system.service.impl;
+
+import com.alibaba.excel.EasyExcel;
+import com.alibaba.excel.exception.ExcelAnalysisException;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import glgc.jjgys.common.excel.ExcelUtil;
+import glgc.jjgys.model.project.JjgFbgcSdgcCqhd;
+import glgc.jjgys.model.projectvo.ljgc.CommonInfoVo;
+import glgc.jjgys.model.projectvo.sdgc.JjgFbgcSdgcCqhdVo;
+import glgc.jjgys.model.system.SysUser;
+import glgc.jjgys.system.easyexcel.ExcelHandler;
+import glgc.jjgys.system.exception.JjgysException;
+import glgc.jjgys.system.mapper.JjgFbgcSdgcCqhdMapper;
+import glgc.jjgys.system.service.JjgFbgcSdgcCqhdService;
+import glgc.jjgys.system.service.SysUserService;
+import glgc.jjgys.system.utils.JjgFbgcCommonUtils;
+import glgc.jjgys.system.utils.ReceiveUtils;
+import glgc.jjgys.system.utils.RowCopy;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.xssf.usermodel.XSSFCell;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import javax.servlet.http.HttpServletResponse;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
+import java.util.*;
+
+/**
+ * <p>
+ *  服务实现类
+ * </p>
+ *
+ * @author wq
+ * @author wq
+ * @since 2023-03-27
+ */
+@Service
+public class JjgFbgcSdgcCqhdServiceImpl extends ServiceImpl<JjgFbgcSdgcCqhdMapper, JjgFbgcSdgcCqhd> implements JjgFbgcSdgcCqhdService {
+
+    @Autowired
+    private JjgFbgcSdgcCqhdMapper jjgFbgcSdgcCqhdMapper;
+
+    @Value(value = "${jjgys.path.filepath}")
+    private String filepath;
+
+    @Autowired
+    private SysUserService sysUserService;
+
+
+    @Override
+    public boolean generateJdb(CommonInfoVo commonInfoVo) throws IOException {
+        String proname = commonInfoVo.getProname();
+        String htd = commonInfoVo.getHtd();
+        String fbgc = commonInfoVo.getFbgc();
+        String userid = commonInfoVo.getUserid();
+        QueryWrapper<SysUser> wrapperuser = new QueryWrapper<>();
+        wrapperuser.eq("id",userid);
+        SysUser one = sysUserService.getOne(wrapperuser);
+        String type = one.getType();
+        List<Long> idlist = new ArrayList<>();
+        if ("2".equals(type) || "4".equals(type)){
+            //公司管理员
+            Long deptId = one.getDeptId();
+            QueryWrapper<SysUser> wrapperid = new QueryWrapper<>();
+            wrapperid.eq("dept_id",deptId);
+            List<SysUser> list = sysUserService.list(wrapperid);
+            //拿到部门下所有用户的id
+            if (list!=null){
+                for (SysUser user : list) {
+                    Long id = user.getId();
+                    idlist.add(id);
+                }
+            }
+        }else if ("3".equals(type)){
+            //普通用户
+            idlist.add(Long.valueOf(userid));
+        }
+        List<Map<String,Object>> sdmclist = jjgFbgcSdgcCqhdMapper.selectsdmcid(proname,htd,fbgc,idlist);
+        if (sdmclist.size()>0){
+            for (Map<String, Object> m : sdmclist)
+            {
+                for (String k : m.keySet()){
+                    String sdmc = m.get(k).toString();
+                    List<Map<String,Object>> cd = jjgFbgcSdgcCqhdMapper.selectcdid(proname,htd,fbgc,sdmc,idlist);
+                    if (cd.get(0).get("zgy1") != null && !"".equals(cd.get(0).get("zgy1")) && cd.get(0).get("zgy2") !=null && !"".equals(cd.get(0).get("zgy2")) && cd.get(0).get("zgy3") !=null && !"".equals(cd.get(0).get("zgy3"))){
+                        DBtoExcelsd(4,proname,htd,fbgc,sdmc,idlist);
+                    }else if (cd.get(0).get("zgy1") != null && !"".equals(cd.get(0).get("zgy1")) && cd.get(0).get("zgy2") !=null && !"".equals(cd.get(0).get("zgy2"))){
+                        DBtoExcelsd(3,proname,htd,fbgc,sdmc,idlist);
+                    }else if (cd.get(0).get("zgy1") != null && !"".equals(cd.get(0).get("zgy1"))){
+                        DBtoExcelsd(2,proname,htd,fbgc,sdmc,idlist);
+                    }else if (cd.get(0).get("zgy2") != null && !"".equals(cd.get(0).get("zgy2"))){
+                        DBtoExcelsd(2,proname,htd,fbgc,sdmc,idlist);
+                    }else if (cd.get(0).get("zgy3") != null && !"".equals(cd.get(0).get("zgy3"))){
+                        DBtoExcelsd(2,proname,htd,fbgc,sdmc,idlist);
+                    }
+
+                }
+            }
+            return true;
+        }else {
+            return false;
+        }
+    }
+
+    /**
+     *
+     * @param cd
+     * @param proname
+     * @param htd
+     * @param fbgc
+     * @param sdmc
+     * @param idlist
+     * @throws IOException
+     */
+    private void DBtoExcelsd(int cd, String proname, String htd, String fbgc, String sdmc, List<Long> idlist) throws IOException {
+        XSSFWorkbook wb = null;
+        QueryWrapper<JjgFbgcSdgcCqhd> wrapper=new QueryWrapper<>();
+        wrapper.like("proname",proname);
+        wrapper.like("htd",htd);
+        wrapper.like("fbgc",fbgc);
+        wrapper.like("sdmc",sdmc);
+        wrapper.in("userid",idlist);
+        wrapper.orderByAsc("sdmc","zh");
+        List<JjgFbgcSdgcCqhd> data = jjgFbgcSdgcCqhdMapper.selectList(wrapper);
+        //分一下左右幅
+        String sheetname1 = cd+"车道左幅";
+        String sheetname2 = cd+"车道右幅";
+        //鉴定表要存放的路径
+        File f = new File(filepath+File.separator+proname+File.separator+htd+File.separator+"39隧道衬砌厚度-"+sdmc+".xlsx");
+        //健壮性判断如果没有数据返回"请导入数据"
+        if (data == null || data.size()==0){
+            return;
+        }else {
+            //存放鉴定表的目录
+            File fdir = new File(filepath + File.separator + proname + File.separator + htd);
+            if (!fdir.exists()) {
+                //创建文件根目录
+                fdir.mkdirs();
+            }
+            try {
+                /*File directory = new File("service-system/src/main/resources/static");
+                String reportPath = directory.getCanonicalPath();
+                String name = "隧道衬砌厚度.xlsx";
+                String path = reportPath + File.separator + name;
+                Files.copy(Paths.get(path), new FileOutputStream(f));*/
+                InputStream inputStream = getClass().getClassLoader().getResourceAsStream("static/隧道衬砌厚度.xlsx");
+                Files.copy(inputStream, f.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                FileInputStream out = new FileInputStream(f);
+                wb = new XSSFWorkbook(out);
+                List<JjgFbgcSdgcCqhd> zfdata = new ArrayList<>();
+                List<JjgFbgcSdgcCqhd> yfdata = new ArrayList<>();
+                for (JjgFbgcSdgcCqhd datum : data) {
+                    String zh = datum.getZh();
+                    if (zh.contains("ZK")){
+                        zfdata.add(datum);
+                    }else if (zh.contains("YK")){
+                        yfdata.add(datum);
+                    }
+
+                }
+                if (cd == 2){
+                    if (zfdata.size() > 0){
+                        createTable2(gettableNum(zfdata.size()),wb,sheetname1);
+                        DBtoExcel2(zfdata,wb,sheetname1,sdmc);
+                    }
+                    if (yfdata.size() > 0){
+                        createTable2(gettableNum(yfdata.size()),wb,sheetname2);
+                        DBtoExcel2(yfdata,wb,sheetname2,sdmc);
+                    }
+
+                }else if (cd ==3) {
+                    if (zfdata.size() > 0 ){
+                        createTable3(gettableNum(zfdata.size()),wb,sheetname1);
+                        DBtoExcel3(zfdata,wb,sheetname1,sdmc);
+                    }
+                    if (yfdata.size() > 0){
+                        createTable3(gettableNum(yfdata.size()),wb,sheetname2);
+                        DBtoExcel3(yfdata,wb,sheetname2,sdmc);
+                    }
+
+                }else if (cd ==4){
+                    if (zfdata.size() > 0 ){
+                        createTable4(gettable4(zfdata.size()),wb,sheetname1);
+                        DBtoExcel4(zfdata,wb,sheetname1,sdmc);
+                    }
+                    if (yfdata.size() > 0){
+                        createTable4(gettable4(yfdata.size()),wb,sheetname2);
+                        DBtoExcel4(yfdata,wb,sheetname2,sdmc);
+                    }
+
+                }
+                for (int j = 0; j < wb.getNumberOfSheets(); j++) {
+                    JjgFbgcCommonUtils.updateFormula(wb, wb.getSheetAt(j));
+                }
+                JjgFbgcCommonUtils.deleteEmptySheets(wb);
+                wb.removeSheetAt(wb.getSheetIndex("source"));
+                wb.removeSheetAt(wb.getSheetIndex("source1"));
+                FileOutputStream fileOut = new FileOutputStream(f);
+                wb.write(fileOut);
+                fileOut.flush();
+                fileOut.close();
+                inputStream.close();
+                out.close();
+                wb.close();
+            }catch (Exception e) {
+                if(f.exists()){
+                    f.delete();
+                }
+                throw new JjgysException(20001, "生成鉴定表错误，请检查数据的正确性");
+            }
+
+        }
+    }
+
+    /**
+     *
+     * @param size
+     * @return
+     */
+    private int gettableNum(int size) {
+        return size%31 ==0 ? size/31 : size/31+1;
+    }
+
+    /**
+     *
+     * @param data
+     * @param wb
+     * @param sheetname
+     * @param sdmc
+     */
+    private void DBtoExcel4(List<JjgFbgcSdgcCqhd> data, XSSFWorkbook wb, String sheetname, String sdmc) {
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy.MM.dd");
+        if (data.size()>0){
+            XSSFSheet sheet = wb.getSheet(sheetname);
+            XSSFRow titlerow = sheet.getRow(1);
+            titlerow.getCell(0).setCellValue("项目名称："+data.get(0).getProname());
+            titlerow.getCell(18).setCellValue("合同段："+data.get(0).getHtd());
+            titlerow = sheet.getRow(2);
+            titlerow.getCell(0).setCellValue("单位工程名称："+sdmc);
+            titlerow = sheet.getRow(3);
+            titlerow.getCell(18).setCellValue("检测时间："+simpleDateFormat.format(data.get(0).getJcsj()));
+
+            //填写数据
+            int curRow = 7;
+            for(JjgFbgcSdgcCqhd row : data){
+                titlerow = sheet.getRow(curRow);
+                //桩号
+                titlerow.getCell(0).setCellValue(row.getZh());
+                //位置
+                titlerow.getCell(1).setCellValue(row.getWz());
+                //设计厚度
+                titlerow.getCell(2).setCellValue(Double.valueOf(String.format("%.0f", Double.valueOf(row.getSjhd()))).intValue());
+
+                //左拱腰1
+                titlerow.getCell(3).setCellValue(Double.valueOf(String.format("%.0f", Double.valueOf(row.getZgy1()))).intValue());
+                titlerow.getCell(4).setCellFormula("IF("+titlerow.getCell(3).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+">=0,\"√\",\"\")");
+                titlerow.getCell(5).setCellFormula("IF("+titlerow.getCell(3).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+"<0,\"×\",\"\")");
+                //左拱腰2
+                titlerow.getCell(6).setCellValue(Double.valueOf(String.format("%.0f", Double.valueOf(row.getZgy2()))).intValue());
+                titlerow.getCell(7).setCellFormula("IF("+titlerow.getCell(6).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+">=0,\"√\",\"\")");
+                titlerow.getCell(8).setCellFormula("IF("+titlerow.getCell(6).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+"<0,\"×\",\"\")");
+                //左拱腰3
+                titlerow.getCell(9).setCellValue(Double.valueOf(String.format("%.0f", Double.valueOf(row.getZgy3()))).intValue());
+                titlerow.getCell(10).setCellFormula("IF("+titlerow.getCell(9).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+">=0,\"√\",\"\")");
+                titlerow.getCell(11).setCellFormula("IF("+titlerow.getCell(9).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+"<0,\"×\",\"\")");
+                //右拱腰1
+                titlerow.getCell(12).setCellValue(Double.valueOf(String.format("%.0f", Double.valueOf(row.getYgy1()))).intValue());
+                titlerow.getCell(13).setCellFormula("IF("+titlerow.getCell(12).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+">=0,\"√\",\"\")");
+                titlerow.getCell(14).setCellFormula("IF("+titlerow.getCell(12).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+"<0,\"×\",\"\")");
+                //右拱腰2
+                titlerow.getCell(15).setCellValue(Double.valueOf(String.format("%.0f", Double.valueOf(row.getYgy2()))).intValue());
+                titlerow.getCell(16).setCellFormula("IF("+titlerow.getCell(15).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+">=0,\"√\",\"\")");
+                titlerow.getCell(17).setCellFormula("IF("+titlerow.getCell(15).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+"<0,\"×\",\"\")");
+                //右拱腰3
+                titlerow.getCell(18).setCellValue(Double.valueOf(String.format("%.0f", Double.valueOf(row.getYgy3()))).intValue());
+                titlerow.getCell(19).setCellFormula("IF("+titlerow.getCell(18).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+">=0,\"√\",\"\")");
+                titlerow.getCell(20).setCellFormula("IF("+titlerow.getCell(18).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+"<0,\"×\",\"\")");
+                //拱顶
+                titlerow.getCell(21).setCellValue(Double.valueOf(String.format("%.0f", Double.valueOf(row.getGd()))).intValue());
+                titlerow.getCell(22).setCellFormula("IF("+titlerow.getCell(21).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+">=0,\"√\",\"\")");
+                titlerow.getCell(23).setCellFormula("IF("+titlerow.getCell(21).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+"<0,\"×\",\"\")");
+                curRow ++;
+            }
+            XSSFRow row = sheet.getRow(sheet.getLastRowNum());
+            curRow = sheet.getLastRowNum();
+            row.getCell(4).setCellFormula("COUNT(D8:V"+curRow+")");
+            row.getCell(10).setCellFormula("COUNTIF(E8:F"+curRow+",\"√\")+COUNTIF(H8:I"+curRow+",\"√\")"
+                    + "+COUNTIF(K8:L"+curRow+",\"√\")+COUNTIF(N8:O"+curRow+",\"√\")+COUNTIF(Q8:R"+curRow+",\"√\")"
+                    + "+COUNTIF(T8:U"+curRow+",\"√\")+COUNTIF(W8:X"+curRow+",\"√\")");
+            row.getCell(15).setCellFormula(row.getCell(10).getReference()+"*100/"+row.getCell(4).getReference());
+        }
+    }
+
+    /**
+     *
+     * @param data
+     * @param wb
+     * @param sheetname
+     * @param sdmc
+     */
+    private void DBtoExcel3(List<JjgFbgcSdgcCqhd> data, XSSFWorkbook wb, String sheetname, String sdmc) {
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy.MM.dd");
+        if (data.size()>0){
+            XSSFSheet sheet = wb.getSheet(sheetname);
+            XSSFRow titlerow = sheet.getRow(1);
+            titlerow.getCell(0).setCellValue("项目名称："+data.get(0).getProname());
+            titlerow.getCell(12).setCellValue("合同段："+data.get(0).getHtd());
+            titlerow = sheet.getRow(2);
+            titlerow.getCell(0).setCellValue("单位工程名称："+sdmc);
+            titlerow = sheet.getRow(3);
+            titlerow.getCell(12).setCellValue("检测时间："+simpleDateFormat.format(data.get(0).getJcsj()));
+
+            //填写数据
+            int curRow = 7;
+            for(JjgFbgcSdgcCqhd row : data){
+                titlerow = sheet.getRow(curRow);
+                //桩号
+                titlerow.getCell(0).setCellValue(row.getZh());
+                //位置
+                titlerow.getCell(1).setCellValue(row.getWz());
+                //设计厚度
+                titlerow.getCell(2).setCellValue(Double.valueOf(String.format("%.0f", Double.valueOf(row.getSjhd()))).intValue());
+                //左拱腰1
+                titlerow.getCell(3).setCellValue(Double.valueOf(String.format("%.0f", Double.valueOf(row.getZgy1()))).intValue());
+                titlerow.getCell(4).setCellFormula("IF("+titlerow.getCell(3).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+">=0,\"√\",\"\")");
+                titlerow.getCell(5).setCellFormula("IF("+titlerow.getCell(3).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+"<0,\"×\",\"\")");
+                //左拱腰2
+                titlerow.getCell(6).setCellValue(Double.valueOf(String.format("%.0f", Double.valueOf(row.getZgy2()))).intValue());
+                titlerow.getCell(7).setCellFormula("IF("+titlerow.getCell(6).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+">=0,\"√\",\"\")");
+                titlerow.getCell(8).setCellFormula("IF("+titlerow.getCell(6).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+"<0,\"×\",\"\")");
+                //右拱腰1
+                titlerow.getCell(9).setCellValue(Double.valueOf(String.format("%.0f", Double.valueOf(row.getYgy1()))).intValue());
+                titlerow.getCell(10).setCellFormula("IF("+titlerow.getCell(9).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+">=0,\"√\",\"\")");
+                titlerow.getCell(11).setCellFormula("IF("+titlerow.getCell(9).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+"<0,\"×\",\"\")");
+                //右拱腰2
+                titlerow.getCell(12).setCellValue(Double.valueOf(String.format("%.0f", Double.valueOf(row.getYgy2()))).intValue());
+                titlerow.getCell(13).setCellFormula("IF("+titlerow.getCell(12).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+">=0,\"√\",\"\")");
+                titlerow.getCell(14).setCellFormula("IF("+titlerow.getCell(12).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+"<0,\"×\",\"\")");
+                //拱顶
+                titlerow.getCell(15).setCellValue(Double.valueOf(String.format("%.0f", Double.valueOf(row.getGd()))).intValue());
+                titlerow.getCell(16).setCellFormula("IF("+titlerow.getCell(15).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+">=0,\"√\",\"\")");
+                titlerow.getCell(17).setCellFormula("IF("+titlerow.getCell(15).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+"<0,\"×\",\"\")");
+                curRow ++;
+            }
+            XSSFRow row = sheet.getRow(sheet.getLastRowNum());
+            curRow = sheet.getLastRowNum();
+            row.getCell(4).setCellFormula("COUNT(D8:R"+curRow+")");
+            row.getCell(10).setCellFormula("COUNTIF(E8:F"+curRow+",\"√\")+COUNTIF(H8:I"+curRow+",\"√\")"
+                    + "+COUNTIF(K8:L"+curRow+",\"√\")+COUNTIF(N8:O"+curRow+",\"√\")+COUNTIF(Q8:R"+curRow+",\"√\")");
+            row.getCell(15).setCellFormula(row.getCell(10).getReference()+"*100/"+row.getCell(4).getReference());
+
+        }
+
+    }
+
+    /**
+     *
+     * @param data
+     * @param wb
+     * @param sheetname
+     * @param sdmc
+     * @return
+     */
+    private boolean DBtoExcel2(List<JjgFbgcSdgcCqhd> data, XSSFWorkbook wb, String sheetname, String sdmc) {
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy.MM.dd");
+        if (data.size()>0){
+            XSSFSheet sheet = wb.getSheet(sheetname);
+            //首先填写表头
+            XSSFRow titlerow = sheet.getRow(1);
+            titlerow.getCell(0).setCellValue("项目名称："+data.get(0).getProname());
+            titlerow.getCell(8).setCellValue("合同段："+data.get(0).getHtd());
+            titlerow = sheet.getRow(2);
+            titlerow.getCell(0).setCellValue("单位工程名称："+sdmc);
+            titlerow = sheet.getRow(3);
+            titlerow.getCell(8).setCellValue("检测时间："+simpleDateFormat.format(data.get(0).getJcsj()));
+            //填写数据
+            int curRow = 7;
+            for(JjgFbgcSdgcCqhd row : data){
+                titlerow = sheet.getRow(curRow);
+                //桩号
+                titlerow.getCell(0).setCellValue(row.getZh());
+                //位置
+                titlerow.getCell(1).setCellValue(row.getWz());
+                //设计厚度
+                titlerow.getCell(2).setCellValue(Double.valueOf(String.format("%.0f", Double.valueOf(row.getSjhd()))).intValue());
+                //左拱腰1
+                if (row.getZgy1() != null && row.getYgy1() != null){
+                    titlerow.getCell(3).setCellValue(Double.valueOf(String.format("%.0f", Double.valueOf(row.getZgy1()))).intValue());
+                    titlerow.getCell(4).setCellFormula("IF("+titlerow.getCell(3).getReference()
+                            +"-$"+titlerow.getCell(2).getReference()+">=0,\"√\",\"\")");
+                    titlerow.getCell(5).setCellFormula("IF("+titlerow.getCell(3).getReference()
+                            +"-$"+titlerow.getCell(2).getReference()+"<0,\"×\",\"\")");
+                    //右拱腰1
+                    titlerow.getCell(6).setCellValue(Double.valueOf(String.format("%.0f", Double.valueOf(row.getYgy1()))).intValue());
+                    titlerow.getCell(7).setCellFormula("IF("+titlerow.getCell(6).getReference()
+                            +"-$"+titlerow.getCell(2).getReference()+">=0,\"√\",\"\")");
+                    titlerow.getCell(8).setCellFormula("IF("+titlerow.getCell(6).getReference()
+                            +"-$"+titlerow.getCell(2).getReference()+"<0,\"×\",\"\")");
+                }else if (row.getZgy2() != null && row.getYgy2() != null){
+                    titlerow.getCell(3).setCellValue(Double.valueOf(String.format("%.0f", Double.valueOf(row.getZgy2()))).intValue());
+                    titlerow.getCell(4).setCellFormula("IF("+titlerow.getCell(3).getReference()
+                            +"-$"+titlerow.getCell(2).getReference()+">=0,\"√\",\"\")");
+                    titlerow.getCell(5).setCellFormula("IF("+titlerow.getCell(3).getReference()
+                            +"-$"+titlerow.getCell(2).getReference()+"<0,\"×\",\"\")");
+                    //右拱腰1
+                    titlerow.getCell(6).setCellValue(Double.valueOf(String.format("%.0f", Double.valueOf(row.getYgy2()))).intValue());
+                    titlerow.getCell(7).setCellFormula("IF("+titlerow.getCell(6).getReference()
+                            +"-$"+titlerow.getCell(2).getReference()+">=0,\"√\",\"\")");
+                    titlerow.getCell(8).setCellFormula("IF("+titlerow.getCell(6).getReference()
+                            +"-$"+titlerow.getCell(2).getReference()+"<0,\"×\",\"\")");
+
+                }else if (row.getZgy3() != null && row.getYgy3() != null){
+                    titlerow.getCell(3).setCellValue(Double.valueOf(String.format("%.0f", Double.valueOf(row.getZgy3()))).intValue());
+                    titlerow.getCell(4).setCellFormula("IF("+titlerow.getCell(3).getReference()
+                            +"-$"+titlerow.getCell(2).getReference()+">=0,\"√\",\"\")");
+                    titlerow.getCell(5).setCellFormula("IF("+titlerow.getCell(3).getReference()
+                            +"-$"+titlerow.getCell(2).getReference()+"<0,\"×\",\"\")");
+                    //右拱腰1
+                    titlerow.getCell(6).setCellValue(Double.valueOf(String.format("%.0f", Double.valueOf(row.getYgy3()))).intValue());
+                    titlerow.getCell(7).setCellFormula("IF("+titlerow.getCell(6).getReference()
+                            +"-$"+titlerow.getCell(2).getReference()+">=0,\"√\",\"\")");
+                    titlerow.getCell(8).setCellFormula("IF("+titlerow.getCell(6).getReference()
+                            +"-$"+titlerow.getCell(2).getReference()+"<0,\"×\",\"\")");
+
+                }
+
+                //拱顶
+                titlerow.getCell(9).setCellValue(Double.valueOf(String.format("%.0f", Double.valueOf(row.getGd()))).intValue());
+                titlerow.getCell(10).setCellFormula("IF("+titlerow.getCell(9).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+">=0,\"√\",\"\")");
+                titlerow.getCell(11).setCellFormula("IF("+titlerow.getCell(9).getReference()
+                        +"-$"+titlerow.getCell(2).getReference()+"<0,\"×\",\"\")");
+                curRow ++;
+            }
+            XSSFRow row = sheet.getRow(sheet.getLastRowNum());
+            curRow = sheet.getLastRowNum();
+
+            row.getCell(3).setCellFormula("COUNT(D8:L"+curRow+")");
+            row.getCell(7).setCellFormula("COUNTIF(E8:F"+curRow+",\"√\")"
+                    + "+COUNTIF(H8:I"+curRow+",\"√\")+COUNTIF(K8:L"+curRow+",\"√\")");
+            row.getCell(10).setCellFormula(row.getCell(7).getReference()+"*100/"+row.getCell(3).getReference());
+            return true;
+        }else{
+            return false;
+        }
+    }
+
+
+    /**
+     *
+     * @param tableNum
+     * @param wb
+     * @param sheetname
+     */
+    private void createTable3(int tableNum, XSSFWorkbook wb, String sheetname) {
+        int record = 0;
+        record = tableNum;
+        for (int i = 1; i < record; i++) {
+            RowCopy.copyRows(wb, sheetname, sheetname, 7, 37, 7 + i * 31);
+        }
+        RowCopy.copyRows(wb, "source", sheetname, 0, 0, record * 31+6);
+        if(record >= 1)
+            wb.setPrintArea(wb.getSheetIndex(sheetname), 0, 17, 0, record * 31 + 6);
+    }
+
+
+    /**
+     *
+     * @param tableNum
+     * @param wb
+     * @param sheetname
+     */
+    private void createTable2(int tableNum,XSSFWorkbook wb, String sheetname) {
+        int record = 0;
+        record = tableNum;
+        for (int i = 1; i < record; i++) {
+            RowCopy.copyRows(wb, sheetname, sheetname, 7, 37, 7 + i * 31);
+        }
+        RowCopy.copyRows(wb, "source1", sheetname, 0, 0, record * 31+6);
+        if(record >= 1)
+            wb.setPrintArea(wb.getSheetIndex(sheetname), 0, 11, 0, record * 31 + 6);
+    }
+
+
+    /**
+     *
+     * @param tableNum
+     * @param wb
+     * @param sheetname
+     */
+    private void createTable4(int tableNum, XSSFWorkbook wb, String sheetname) {
+        int record = 0;
+        record = tableNum;
+        for (int i = 1; i < record; i++) {
+            RowCopy.copyRows(wb, sheetname, sheetname, 7, 23, 7 + i * 17);
+        }
+        RowCopy.copyRows(wb, "source", sheetname, 2, 2, record * 17 + 6);
+        if(record >= 1)
+            wb.setPrintArea(wb.getSheetIndex(sheetname), 0, 23, 0, record * 17 + 6);
+    }
+
+    private int gettable4(int size) {
+        return size%17 ==0 ? size/17 : size/17+1;
+
+    }
+    @Override
+    public List<Map<String, Object>> lookJdbjgPage(CommonInfoVo commonInfoVo) throws IOException {
+        DecimalFormat df = new DecimalFormat("0.00");
+        DecimalFormat decf = new DecimalFormat("0.##");
+        String proname = commonInfoVo.getProname();
+        String htd = commonInfoVo.getHtd();
+        String userid = commonInfoVo.getUserid();
+        String fbgc = "衬砌";
+        QueryWrapper<SysUser> wrapperuser = new QueryWrapper<>();
+        wrapperuser.eq("id",userid);
+        SysUser one = sysUserService.getOne(wrapperuser);
+        String type = one.getType();
+        List<Long> idlist = new ArrayList<>();
+        if ("2".equals(type) || "4".equals(type)){
+            //公司管理员
+            Long deptId = one.getDeptId();
+            QueryWrapper<SysUser> wrapperid = new QueryWrapper<>();
+            wrapperid.eq("dept_id",deptId);
+            List<SysUser> list = sysUserService.list(wrapperid);
+            //拿到部门下所有用户的id
+            if (list!=null){
+                for (SysUser user : list) {
+                    Long id = user.getId();
+                    idlist.add(id);
+                }
+            }
+        }else if ("3".equals(type)){
+            //普通用户
+            idlist.add(Long.valueOf(userid));
+        }
+        List<Map<String,Object>> mapList = new ArrayList<>();
+        List<Map<String, Object>> selectsdmc = jjgFbgcSdgcCqhdMapper.selectsdmcid(proname, htd,"衬砌",idlist);
+        for (int i=0;i<selectsdmc.size();i++) {
+            String sdmc = selectsdmc.get(i).get("sdmc").toString();
+            String cdnum = "";
+            int cdhtd = 0;
+            Map<String,Object> jgmap = new HashMap<>();
+            File f = new File(filepath + File.separator + proname + File.separator + htd + File.separator + "39隧道衬砌厚度-" + sdmc + ".xlsx");
+            if (!f.exists()) {
+                return null;
+            } else {
+                List<Map<String,Object>> cd = jjgFbgcSdgcCqhdMapper.selectcdid(proname,htd,fbgc,sdmc,idlist);
+                if (cd.get(0).get("zgy1") != null && !"".equals(cd.get(0).get("zgy1")) && cd.get(0).get("zgy2") !=null && !"".equals(cd.get(0).get("zgy2")) && cd.get(0).get("zgy3") !=null && !"".equals(cd.get(0).get("zgy3"))){
+                    cdnum = "4车道";
+                    cdhtd = 18;
+                }else if (cd.get(0).get("zgy1") != null && !"".equals(cd.get(0).get("zgy1")) && cd.get(0).get("zgy2") !=null && !"".equals(cd.get(0).get("zgy2"))){
+                    cdnum = "3车道";
+                    cdhtd = 12;
+                }else if (cd.get(0).get("zgy1") != null && !"".equals(cd.get(0).get("zgy1"))){
+                    cdnum = "2车道";
+                    cdhtd = 8;
+                }
+                List<Map<String,Object>> wz = jjgFbgcSdgcCqhdMapper.selectwz2id(proname,htd,sdmc,idlist);
+                String wzname = wz.get(0).get("wz").toString();
+                String sheetname = cdnum+wzname;
+                XSSFWorkbook xwb = new XSSFWorkbook(new FileInputStream(f));
+                XSSFSheet sheet = xwb.getSheet(sheetname);
+                XSSFCell xmname = sheet.getRow(1).getCell(0);//项目名
+                XSSFCell htdname = sheet.getRow(1).getCell(cdhtd);//合同段名
+                String name = "项目名称："+proname;
+                String he = "合同段："+htd;
+                if (name.equals(xmname.toString()) && he.equals(htdname.toString())) {
+                    if (cdnum.equals("2车道")){
+                        int lastRowNum = sheet.getLastRowNum();
+                        sheet.getRow(lastRowNum).getCell(3).setCellType(CellType.STRING);
+                        sheet.getRow(lastRowNum).getCell(7).setCellType(CellType.STRING);
+                        sheet.getRow(lastRowNum).getCell(10).setCellType(CellType.STRING);
+                        jgmap.put("检测项目",sdmc);
+                        jgmap.put("检测总点数",decf.format(Double.valueOf(sheet.getRow(lastRowNum).getCell(3).getStringCellValue())));
+                        jgmap.put("合格点数",decf.format(Double.valueOf(sheet.getRow(lastRowNum).getCell(7).getStringCellValue())));
+                        jgmap.put("合格率",df.format(Double.valueOf(sheet.getRow(lastRowNum).getCell(10).getStringCellValue())));
+                    }else if(cdnum.equals("3车道") || cdnum.equals("4车道") ) {
+                        int lastRowNum = sheet.getLastRowNum();
+                        sheet.getRow(lastRowNum).getCell(4).setCellType(CellType.STRING);
+                        sheet.getRow(lastRowNum).getCell(10).setCellType(CellType.STRING);
+                        sheet.getRow(lastRowNum).getCell(15).setCellType(CellType.STRING);
+                        jgmap.put("检测项目", sdmc);
+                        jgmap.put("检测总点数", decf.format(Double.valueOf(sheet.getRow(lastRowNum).getCell(4).getStringCellValue())));
+                        jgmap.put("合格点数", decf.format(Double.valueOf(sheet.getRow(lastRowNum).getCell(10).getStringCellValue())));
+                        jgmap.put("合格率", df.format(Double.valueOf(sheet.getRow(lastRowNum).getCell(15).getStringCellValue())));
+                    }
+                    mapList.add(jgmap);
+                }
+            }
+        }
+        return mapList;
+    }
+
+    @Override
+    public List<Map<String, Object>> getsdnum(String proname, String htd) {
+        List<Map<String,Object>> list = jjgFbgcSdgcCqhdMapper.getsdnum(proname,htd);
+        return list;
+    }
+
+
+    @Override
+    public List<Map<String, Object>> lookJdbjg(CommonInfoVo commonInfoVo) throws IOException {
+        DecimalFormat df = new DecimalFormat("0.00");
+        DecimalFormat decf = new DecimalFormat("0.##");
+        String proname = commonInfoVo.getProname();
+        String htd = commonInfoVo.getHtd();
+        List<Map<String,Object>> mapList = new ArrayList<>();
+        List<Map<String, Object>> selectsdmc = selectsdmc2(proname, htd);
+        for (int i=0;i<selectsdmc.size();i++) {
+            String sdmc = selectsdmc.get(i).get("sdmc").toString();
+            String cdnum = "";
+
+            File f = new File(filepath + File.separator + proname + File.separator + htd + File.separator + "39隧道衬砌厚度-" + sdmc + ".xlsx");
+            if (!f.exists()) {
+                return null;
+            } else {
+                List<Map<String,Object>> cd = jjgFbgcSdgcCqhdMapper.selectcd2(proname,htd,sdmc);
+                if (cd.get(0).get("zgy1") != null && !"".equals(cd.get(0).get("zgy1")) && cd.get(0).get("zgy2") !=null && !"".equals(cd.get(0).get("zgy2")) && cd.get(0).get("zgy3") !=null && !"".equals(cd.get(0).get("zgy3"))){
+                    cdnum = "4车道";
+                }else if (cd.get(0).get("zgy1") != null && !"".equals(cd.get(0).get("zgy1")) && cd.get(0).get("zgy2") !=null && !"".equals(cd.get(0).get("zgy2"))){
+                    cdnum = "3车道";
+                }else if (cd.get(0).get("zgy1") != null && !"".equals(cd.get(0).get("zgy1"))){
+                    cdnum = "2车道";
+                }
+                List<Map<String,Object>> wz = jjgFbgcSdgcCqhdMapper.selectwz2(proname,htd,sdmc);
+                // 看看隧道里面都有哪幅， wz里面存放了左右幅数据
+                // 用于存储不同的 "wz" 值
+                Set<String> uniqueWz = new HashSet<>();
+
+                // 遍历 wz 列表
+                for (Map<String, Object> map : wz) {
+                    // 获取 "wz" 的值并添加到 Set 中
+                    String wzValue = map.get("wz").toString();
+                    uniqueWz.add(wzValue);
+                }
+                // 将 Set 转换为 List
+                List<String> resultList = new ArrayList<>(uniqueWz);
+                for(String wzname : resultList){
+                    // 得在这里初始化，否则引用传递会导致最后一次写入改变List里面的值
+                    Map<String,Object> jgmap = new HashMap<>();
+                    //String wzname = wz.get(0).get("wz").toString();
+                    String sheetname = cdnum+wzname;
+                    XSSFWorkbook xwb = new XSSFWorkbook(new FileInputStream(f));
+                    XSSFSheet sheet = xwb.getSheet(sheetname);
+                    XSSFCell xmname = sheet.getRow(1).getCell(0);//项目名
+                    XSSFCell htdname = sheet.getRow(1).getCell(8);//合同段名
+                    String name = "项目名称："+proname;
+                    String he = "合同段："+htd;
+                    if (name.equals(xmname.toString())) {
+                        if (cdnum.equals("2车道")){
+                            int lastRowNum = sheet.getLastRowNum();
+                            sheet.getRow(lastRowNum).getCell(3).setCellType(CellType.STRING);
+                            sheet.getRow(lastRowNum).getCell(7).setCellType(CellType.STRING);
+                            sheet.getRow(lastRowNum).getCell(10).setCellType(CellType.STRING);
+                            jgmap.put("检测项目",sdmc);
+                            jgmap.put("检测总点数",decf.format(Double.valueOf(sheet.getRow(lastRowNum).getCell(3).getStringCellValue())));
+                            jgmap.put("合格点数",decf.format(Double.valueOf(sheet.getRow(lastRowNum).getCell(7).getStringCellValue())));
+                            jgmap.put("合格率",df.format(Double.valueOf(sheet.getRow(lastRowNum).getCell(10).getStringCellValue())));
+                        }else if(cdnum.equals("3车道") || cdnum.equals("4车道") ) {
+                            int lastRowNum = sheet.getLastRowNum();
+                            sheet.getRow(lastRowNum).getCell(4).setCellType(CellType.STRING);
+                            sheet.getRow(lastRowNum).getCell(10).setCellType(CellType.STRING);
+                            sheet.getRow(lastRowNum).getCell(15).setCellType(CellType.STRING);
+                            jgmap.put("检测项目", sdmc);
+                            jgmap.put("检测总点数", decf.format(Double.valueOf(sheet.getRow(lastRowNum).getCell(4).getStringCellValue())));
+                            jgmap.put("合格点数", decf.format(Double.valueOf(sheet.getRow(lastRowNum).getCell(10).getStringCellValue())));
+                            jgmap.put("合格率", df.format(Double.valueOf(sheet.getRow(lastRowNum).getCell(15).getStringCellValue())));
+                        }
+                        mapList.add(jgmap);
+                    }
+                }
+
+            }
+        }
+        return mapList;
+    }
+
+    @Override
+    public void exportsdcqhd(HttpServletResponse response) {
+        File directory = new File("");// 参数为空
+        String courseFile = null;
+        try {
+            String fileName = "02隧道衬砌厚度度实测数据";
+            String sheetName = "实测数据";
+            ExcelUtil.writeExcelWithSheets(response, null, fileName, sheetName, new JjgFbgcSdgcCqhdVo()).finish();
+            courseFile = directory.getCanonicalPath();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }finally {
+            File t = new File(courseFile+File.separator+"02隧道衬砌厚度度实测数据.xlsx");
+            if (t.exists()){
+                t.delete();
+            }
+        }
+
+
+    }
+
+    @Override
+    @Transactional
+    public void importsdcqhd(MultipartFile file, CommonInfoVo commonInfoVo) {
+        String htd = commonInfoVo.getHtd();
+        try {
+            EasyExcel.read(file.getInputStream())
+                    .sheet(0)
+                    .head(JjgFbgcSdgcCqhdVo.class)
+                    .headRowNumber(1)
+                    .registerReadListener(
+                            new ExcelHandler<JjgFbgcSdgcCqhdVo>(JjgFbgcSdgcCqhdVo.class) {
+                                @Override
+                                public void handle(List<JjgFbgcSdgcCqhdVo> dataList) {
+                                    int rowNumber=2;
+                                    for(JjgFbgcSdgcCqhdVo sdgcCqhdVo: dataList)
+                                    {
+                                        if (StringUtils.isEmpty(sdgcCqhdVo.getWz()) || sdgcCqhdVo.getWz().contains("左线") || sdgcCqhdVo.getWz().contains("右线")){
+                                            throw new JjgysException(20001, "您上传的"+htd+"合同段中02隧道衬砌厚度度实测数据.xlsx文件，第"+rowNumber+"行的数据中，请填写左幅或右幅");
+                                        }
+                                        if (StringUtils.isEmpty(sdgcCqhdVo.getSdmc())) {
+                                            throw new JjgysException(20001, "您上传的"+htd+"合同段中02隧道衬砌厚度度实测数据.xlsx文件，第"+rowNumber+"行的数据中，隧道名称为空，请修改后重新上传");
+                                        }
+                                        if (StringUtils.isEmpty(sdgcCqhdVo.getZh()) || !sdgcCqhdVo.getZh().contains("ZK") && !sdgcCqhdVo.getZh().contains("YK")) {
+                                            throw new JjgysException(20001, "您上传的"+htd+"合同段中02隧道衬砌厚度度实测数据.xlsx文件，第"+rowNumber+"行的数据中，桩号有误，请修改后重新上传");
+                                        }
+                                        if (!StringUtils.isNumeric(sdgcCqhdVo.getSjhd()) || StringUtils.isEmpty(sdgcCqhdVo.getSjhd())) {
+                                            throw new JjgysException(20001, "您上传的"+htd+"合同段中02隧道衬砌厚度度实测数据.xlsx文件，第"+rowNumber+"行的数据中，设计厚度值有误，请修改后重新上传");
+                                        }
+                                       /* if (!StringUtils.isNumeric(sdgcCqhdVo.getZgy1()) || StringUtils.isEmpty(sdgcCqhdVo.getZgy1())) {
+                                            throw new JjgysException(20001, "您上传的"+htd+"合同段中02隧道衬砌厚度度实测数据.xlsx文件，第"+rowNumber+"行的数据中，左拱腰1值有误，请修改后重新上传");
+                                        }
+                                        if (!StringUtils.isNumeric(sdgcCqhdVo.getYgy1()) || StringUtils.isEmpty(sdgcCqhdVo.getYgy1())) {
+                                            throw new JjgysException(20001, "您上传的"+htd+"合同段中02隧道衬砌厚度度实测数据.xlsx文件，第"+rowNumber+"行的数据中，右拱腰1值有误，请修改后重新上传");
+                                        }*/
+                                        if (!StringUtils.isNumeric(sdgcCqhdVo.getGd()) || StringUtils.isEmpty(sdgcCqhdVo.getGd())) {
+                                            throw new JjgysException(20001, "您上传的"+htd+"合同段中02隧道衬砌厚度度实测数据.xlsx文件，第"+rowNumber+"行的数据中，拱顶值有误，请修改后重新上传");
+                                        }
+                                        JjgFbgcSdgcCqhd fbgcSdgcCqhd = new JjgFbgcSdgcCqhd();
+                                        BeanUtils.copyProperties(sdgcCqhdVo,fbgcSdgcCqhd);
+                                        fbgcSdgcCqhd.setCreatetime(new Date());
+                                        fbgcSdgcCqhd.setUserid(commonInfoVo.getUserid());
+                                        fbgcSdgcCqhd.setProname(commonInfoVo.getProname());
+                                        fbgcSdgcCqhd.setHtd(commonInfoVo.getHtd());
+                                        fbgcSdgcCqhd.setFbgc(commonInfoVo.getFbgc());
+                                        jjgFbgcSdgcCqhdMapper.insert(fbgcSdgcCqhd);
+                                        rowNumber++;
+                                    }
+                                }
+                            }
+                    ).doRead();
+        } catch (IOException e) {
+            throw new JjgysException(20001,"您上传的"+htd+"合同段中02隧道衬砌厚度实测数据.xlsx文件，解析excel出错，请传入正确格式的excel");
+        }catch (NullPointerException e) {
+            throw new JjgysException(20001,"您上传的"+htd+"合同段中02隧道衬砌厚度实测数据.xlsx文件，请检查数据的正确性或删除文件最后的空数据，然后重新上传");
+        }catch (ExcelAnalysisException e) {
+            throw new JjgysException(20001,"您上传的"+htd+"合同段中02隧道衬砌厚度实测数据.xlsx文件，请将检测日期修改为2021/01/01的格式，然后重新上传");
+        }
+
+    }
+
+    @Override
+    public List<Map<String, Object>> selectsdmc(String proname, String htd, String fbgc,String userid) {
+        QueryWrapper<SysUser> wrapperuser = new QueryWrapper<>();
+        wrapperuser.eq("id",userid);
+        SysUser one = sysUserService.getOne(wrapperuser);
+        String type = one.getType();
+        List<Long> idlist = new ArrayList<>();
+        if ("2".equals(type) || "4".equals(type)){
+            //公司管理员
+            Long deptId = one.getDeptId();
+            QueryWrapper<SysUser> wrapperid = new QueryWrapper<>();
+            wrapperid.eq("dept_id",deptId);
+            List<SysUser> list = sysUserService.list(wrapperid);
+            //拿到部门下所有用户的id
+            if (list!=null){
+                for (SysUser user : list) {
+                    Long id = user.getId();
+                    idlist.add(id);
+                }
+            }
+        }else if ("3".equals(type)){
+            //普通用户
+            idlist.add(Long.valueOf(userid));
+        }
+        List<Map<String,Object>> sdmclist = jjgFbgcSdgcCqhdMapper.selectsdmcid(proname,htd,fbgc,idlist);
+        return sdmclist;
+    }
+
+    @Override
+    public List<Map<String, Object>> selectsjhd(CommonInfoVo commonInfoVo,String s) {
+        String proname = commonInfoVo.getProname();
+        String htd = commonInfoVo.getHtd();
+        List<Map<String, Object>> list = jjgFbgcSdgcCqhdMapper.selectsjhd(proname,htd,s);
+        return list;
+
+    }
+
+    @Override
+    public List<Map<String, Object>> lookjg(CommonInfoVo commonInfoVo, String value) throws IOException {
+        DecimalFormat df = new DecimalFormat("0.00");
+        DecimalFormat decf = new DecimalFormat("0.##");
+        String proname = commonInfoVo.getProname();
+        String htd = commonInfoVo.getHtd();
+        List<Map<String,Object>> mapList = new ArrayList<>();
+        List<Map<String, Object>> selectsdmc = selectsdmc2(proname, htd);
+        //for (int i=0;i<selectsdmc.size();i++) {
+            String sdmc = StringUtils.substringBetween(value, "-", ".");
+            String cdnum = "";
+            Map<String,Object> jgmap = new HashMap<>();
+            File f = new File(filepath + File.separator + proname + File.separator + htd + File.separator + value);
+            if (!f.exists()) {
+                return null;
+            } else {
+                List<Map<String,Object>> cd = jjgFbgcSdgcCqhdMapper.selectcd2(proname,htd,sdmc);
+                if (cd.get(0).get("zgy1") != null && !"".equals(cd.get(0).get("zgy1")) && cd.get(0).get("zgy2") !=null && !"".equals(cd.get(0).get("zgy2")) && cd.get(0).get("zgy3") !=null && !"".equals(cd.get(0).get("zgy3"))){
+                    cdnum = "4车道";
+                }else if (cd.get(0).get("zgy1") != null && !"".equals(cd.get(0).get("zgy1")) && cd.get(0).get("zgy2") !=null && !"".equals(cd.get(0).get("zgy2"))){
+                    cdnum = "3车道";
+                }else if (cd.get(0).get("zgy1") != null && !"".equals(cd.get(0).get("zgy1"))){
+                    cdnum = "2车道";
+                }
+                List<Map<String,Object>> wz = jjgFbgcSdgcCqhdMapper.selectwz2(proname,htd,sdmc);
+                String wzname = wz.get(0).get("wz").toString();
+                if (wzname.contains("左线")){
+                    wzname = "左幅";
+                }else if (wzname.contains("右线")){
+                    wzname = "右幅";
+                }
+                String sheetname = cdnum+wzname;
+                XSSFWorkbook xwb = new XSSFWorkbook(new FileInputStream(f));
+                XSSFSheet sheet = xwb.getSheet(sheetname);
+                XSSFCell xmname = sheet.getRow(1).getCell(0);//项目名
+                XSSFCell htdname = sheet.getRow(1).getCell(8);//合同段名
+                String name = "项目名称："+proname;
+                String he = "合同段："+htd;
+                if (name.contains(xmname.toString()) && he.equals(htdname.toString())) {
+                    if (cdnum.equals("2车道")){
+                        int lastRowNum = sheet.getLastRowNum();
+                        sheet.getRow(lastRowNum).getCell(3).setCellType(CellType.STRING);
+                        sheet.getRow(lastRowNum).getCell(7).setCellType(CellType.STRING);
+                        sheet.getRow(lastRowNum).getCell(10).setCellType(CellType.STRING);
+                        jgmap.put("检测项目",sdmc);
+                        jgmap.put("检测总点数",decf.format(Double.valueOf(sheet.getRow(lastRowNum).getCell(3).getStringCellValue())));
+                        jgmap.put("合格点数",decf.format(Double.valueOf(sheet.getRow(lastRowNum).getCell(7).getStringCellValue())));
+                        jgmap.put("合格率",df.format(Double.valueOf(sheet.getRow(lastRowNum).getCell(10).getStringCellValue())));
+                    }else if(cdnum.equals("3车道") || cdnum.equals("4车道") ) {
+                        int lastRowNum = sheet.getLastRowNum();
+                        sheet.getRow(lastRowNum).getCell(4).setCellType(CellType.STRING);
+                        sheet.getRow(lastRowNum).getCell(10).setCellType(CellType.STRING);
+                        sheet.getRow(lastRowNum).getCell(15).setCellType(CellType.STRING);
+                        jgmap.put("检测项目", sdmc);
+                        jgmap.put("检测总点数", decf.format(Double.valueOf(sheet.getRow(lastRowNum).getCell(4).getStringCellValue())));
+                        jgmap.put("合格点数", decf.format(Double.valueOf(sheet.getRow(lastRowNum).getCell(10).getStringCellValue())));
+                        jgmap.put("合格率", df.format(Double.valueOf(sheet.getRow(lastRowNum).getCell(15).getStringCellValue())));
+                    }
+                    mapList.add(jgmap);
+                }
+            }
+        //}
+        return mapList;
+    }
+
+    @Override
+    public int getds(CommonInfoVo commonInfoVo, String sdmc) {
+        String proname = commonInfoVo.getProname();
+        String htd = commonInfoVo.getHtd();
+        List<Map<String,Object>> list = jjgFbgcSdgcCqhdMapper.getds(proname,htd,sdmc);
+        System.out.println(list);
+        int num=0;
+        for (Map<String, Object> map : list) {
+            double sjhd = Double.valueOf(map.get("sjhd").toString());
+            if (!map.get("zgy1").toString().equals("") && map.get("zgy1")!=null){
+                double zgy = Double.valueOf(map.get("zgy1").toString());
+                if (zgy < sjhd/2){
+                    num += 1;
+                }
+            }
+            if (map.get("zgy2")!=null && !map.get("zgy2").toString().equals("")){
+                double zgy = Double.valueOf(map.get("zgy2").toString());
+                if (zgy < sjhd/2){
+                    num += 1;
+                }
+            }
+            if (map.get("zgy3")!=null){
+                double zgy = Double.valueOf(map.get("zgy3").toString());
+                if (zgy < sjhd/2){
+                    num += 1;
+                }
+            }
+
+            if (map.get("ygy1")!=null){
+                double zgy = Double.valueOf(map.get("ygy1").toString());
+                if (zgy < sjhd/2){
+                    num += 1;
+                }
+            }
+            if (map.get("ygy2")!=null){
+                double zgy = Double.valueOf(map.get("ygy2").toString());
+                if (zgy < sjhd/2){
+                    num += 1;
+                }
+            }
+            if (map.get("ygy3")!=null){
+                double zgy = Double.valueOf(map.get("ygy3").toString());
+                if (zgy < sjhd/2){
+                    num += 1;
+                }
+            }
+        }
+        return num;
+
+    }
+
+    @Override
+    public int selectnum(String proname, String htd) {
+        int selectnum = jjgFbgcSdgcCqhdMapper.selectnum(proname, htd);
+        return selectnum;
+    }
+
+    @Override
+    public int selectnumname(String proname) {
+        int selectnum = jjgFbgcSdgcCqhdMapper.selectnumname(proname);
+        return selectnum;
+    }
+
+    public List<Map<String, Object>> selectsdmc2(String proname, String htd) {
+        List<Map<String,Object>> sdmclist = jjgFbgcSdgcCqhdMapper.selectsdmc2(proname,htd);
+        return sdmclist;
+    }
+
+    @Override
+    public int createMoreRecords(List<JjgFbgcSdgcCqhd> data, String userID) {
+        return ReceiveUtils.createMore(data, jjgFbgcSdgcCqhdMapper, userID);
+    }
+}

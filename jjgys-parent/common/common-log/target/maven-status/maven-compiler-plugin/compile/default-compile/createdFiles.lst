@@ -1,0 +1,5 @@
+glgc\jjgys\system\annotation\Log.class
+glgc\jjgys\system\service\OperLogService.class
+glgc\jjgys\system\aspect\LogAspect.class
+glgc\jjgys\system\enums\BusinessType.class
+glgc\jjgys\system\enums\OperatorType.class

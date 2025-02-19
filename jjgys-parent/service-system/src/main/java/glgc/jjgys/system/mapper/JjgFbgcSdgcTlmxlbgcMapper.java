@@ -1,0 +1,31 @@
+package glgc.jjgys.system.mapper;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import glgc.jjgys.model.project.JjgFbgcSdgcTlmxlbgc;
+import org.apache.ibatis.annotations.Mapper;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * <p>
+ *  Mapper 接口
+ * </p>
+ *
+ * @author wq
+ * @since 2023-05-04
+ */
+@Mapper
+public interface JjgFbgcSdgcTlmxlbgcMapper extends BaseMapper<JjgFbgcSdgcTlmxlbgc> {
+
+    List<Map<String, Object>> selectsdmc(String proname, String htd);
+
+    List<Map<String, Object>> selectsdmcid(String proname, String htd, List<Long> idlist);
+
+    int selectnum(String proname, String htd);
+
+    int selectnumname(String proname);
+
+    List<Map<String, Object>> getsdnum(String proname, String htd);
+
+}

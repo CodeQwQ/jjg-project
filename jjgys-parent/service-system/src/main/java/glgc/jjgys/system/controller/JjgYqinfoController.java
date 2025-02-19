@@ -1,0 +1,121 @@
+package glgc.jjgys.system.controller;
+
+
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import glgc.jjgys.common.result.Result;
+import glgc.jjgys.common.utils.IpUtil;
+import glgc.jjgys.common.utils.JwtHelper;
+import glgc.jjgys.model.project.JjgRyinfo;
+import glgc.jjgys.model.project.JjgYqinfo;
+import glgc.jjgys.model.system.SysOperLog;
+import glgc.jjgys.system.service.JjgRyinfoService;
+import glgc.jjgys.system.service.JjgYqinfoService;
+import glgc.jjgys.system.service.OperLogService;
+import io.swagger.annotations.ApiOperation;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.multipart.MultipartFile;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.util.Date;
+import java.util.List;
+
+/**
+ * <p>
+ *  前端控制器
+ * </p>
+ *
+ * @author wq
+ * @since 2023-12-05
+ */
+@RestController
+@RequestMapping("/jjg/yqinfo")
+public class JjgYqinfoController {
+
+    @Autowired
+    private JjgYqinfoService jjgYqinfoService;
+
+    @Autowired
+    private OperLogService operLogService;
+
+    @ApiOperation("仪器信息文件导出")
+    @GetMapping("export")
+    public void export(HttpServletResponse response, @RequestParam String projectname){
+        jjgYqinfoService.export(response,projectname);
+    }
+
+    @ApiOperation(value = "仪器信息数据文件导入")
+    @PostMapping("importyqxx")
+    public Result importyqxx(@RequestParam("file") MultipartFile file, String proname) {
+        jjgYqinfoService.importyqxx(file,proname);
+        return Result.ok();
+    }
+
+    @PostMapping("findQueryPage/{current}/{limit}")
+    public Result findQueryPage(@PathVariable long current,
+                                @PathVariable long limit,
+                                @RequestBody JjgYqinfo jjgYqinfo) {
+        //创建page对象
+        Page<JjgYqinfo> pageParam = new Page<>(current, limit);
+        if (jjgYqinfo != null) {
+            QueryWrapper<JjgYqinfo> wrapper = new QueryWrapper<>();
+            wrapper.like("proname", jjgYqinfo.getProname());
+            //调用方法分页查询
+            IPage<JjgYqinfo> pageModel = jjgYqinfoService.page(pageParam, wrapper);
+            //返回
+            return Result.ok(pageModel);
+        }
+        return Result.ok().message("无数据");
+    }
+
+    @ApiOperation("批量删除仪器信息数据")
+    @DeleteMapping("removeBatch")
+    public Result removeBeatch(@RequestBody List<String> idList){
+        boolean hd = jjgYqinfoService.removeByIds(idList);
+        if(hd){
+            return Result.ok();
+        } else {
+            return Result.fail().message("删除失败！");
+        }
+
+    }
+
+    @ApiOperation("根据id查询")
+    @GetMapping("getJabx/{id}")
+    public Result getJabx(@PathVariable String id) {
+        JjgYqinfo user = jjgYqinfoService.getById(id);
+        return Result.ok(user);
+    }
+
+    @ApiOperation("修改仪器信息数据")
+    @PostMapping("update")
+    public Result update(@RequestBody JjgYqinfo user) {
+        RequestAttributes ra = RequestContextHolder.getRequestAttributes();
+        ServletRequestAttributes sra = (ServletRequestAttributes) ra;
+        HttpServletRequest request = sra.getRequest();
+        boolean is_Success = jjgYqinfoService.updateById(user);
+        if(is_Success) {
+            SysOperLog sysOperLog = new SysOperLog();
+            sysOperLog.setProname(user.getProname());
+            sysOperLog.setHtd("-");
+            sysOperLog.setFbgc("-");
+            sysOperLog.setTitle("仪器信息数据");
+            sysOperLog.setBusinessType("修改");
+            sysOperLog.setOperName(JwtHelper.getUsername(request.getHeader("token")));
+            sysOperLog.setOperIp(IpUtil.getIpAddress(request));
+            sysOperLog.setOperTime(new Date());
+            operLogService.saveSysLog(sysOperLog);
+            return Result.ok();
+        } else {
+            return Result.fail();
+        }
+    }
+
+}
+

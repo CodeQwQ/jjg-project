@@ -1,0 +1,44 @@
+package glgc.jjgys.system.mapper;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import glgc.jjgys.model.project.JjgFbgcLmgcGslqlmhdzxf;
+import org.apache.ibatis.annotations.Mapper;
+
+import java.util.List;
+
+/**
+ * <p>
+ *  Mapper 接口
+ * </p>
+ *
+ * @author wq
+ * @since 2023-04-25
+ */
+@Mapper
+public interface JjgFbgcLmgcGslqlmhdzxfMapper extends BaseMapper<JjgFbgcLmgcGslqlmhdzxf> {
+
+    List<JjgFbgcLmgcGslqlmhdzxf> selectzxzf(String proname, String htd, String fbgc, List<Long> idlist);
+
+    List<JjgFbgcLmgcGslqlmhdzxf> selectzxyf(String proname, String htd, String fbgc, List<Long> idlist);
+
+    List<JjgFbgcLmgcGslqlmhdzxf> selectsdzf(String proname, String htd, String fbgc, List<Long> idlist);
+
+    List<JjgFbgcLmgcGslqlmhdzxf> selectsdyf(String proname, String htd, String fbgc, List<Long> idlist);
+
+    List<JjgFbgcLmgcGslqlmhdzxf> selectqlzf(String proname, String htd, String fbgc, List<Long> idlist);
+
+    List<JjgFbgcLmgcGslqlmhdzxf> selectqlyf(String proname, String htd, String fbgc, List<Long> idlist);
+
+    List<JjgFbgcLmgcGslqlmhdzxf> selectzd(String proname, String htd, String fbgc, List<Long> idlist);
+
+    List<JjgFbgcLmgcGslqlmhdzxf> selectljx(String proname, String htd, String fbgc, List<Long> idlist);
+
+    List<JjgFbgcLmgcGslqlmhdzxf> selectljxq(String proname, String htd, String fbgc);
+
+    List<JjgFbgcLmgcGslqlmhdzxf> selectljxsd(String proname, String htd, String fbgc);
+
+    int selectnum(String proname, String htd);
+
+    int selectnumname(String proname);
+
+}

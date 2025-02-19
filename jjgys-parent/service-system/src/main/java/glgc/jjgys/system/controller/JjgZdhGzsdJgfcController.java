@@ -1,0 +1,161 @@
+package glgc.jjgys.system.controller;
+
+
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import glgc.jjgys.common.result.Result;
+import glgc.jjgys.model.base.JgCommonEntity;
+import glgc.jjgys.model.project.JjgZdhGzsdJgfc;
+import glgc.jjgys.model.projectvo.ljgc.CommonInfoVo;
+import glgc.jjgys.system.service.JjgZdhGzsdJgfcService;
+import glgc.jjgys.system.utils.JjgFbgcCommonUtils;
+import io.swagger.annotations.ApiOperation;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import javax.servlet.http.HttpServletResponse;
+import java.io.File;
+import java.io.IOException;
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * <p>
+ *  前端控制器
+ * </p>
+ *
+ * @author wq
+ * @since 2023-09-23
+ */
+@RestController
+@RequestMapping("/jjg/jgfc/zdh/gzsd")
+@CrossOrigin
+public class JjgZdhGzsdJgfcController {
+
+    @Autowired
+    private JjgZdhGzsdJgfcService jjgZdhGzsdJgfcService;
+
+
+    @Value(value = "${jjgys.path.jgfilepath}")
+    private String jgfilepath;
+
+    @ApiOperation("查看平均值")
+    @GetMapping("lookpjz")
+    public Result lookpjz(@RequestParam String proname) throws IOException {
+        List<Map<String,Object>> list = jjgZdhGzsdJgfcService.lookpjz(proname);
+        return Result.ok(list);
+    }
+
+    @RequestMapping(value = "/download", method = RequestMethod.GET)
+    public void downloadExport(HttpServletResponse response, String proname) throws IOException {
+        List<Map<String,Object>> htdList = jjgZdhGzsdJgfcService.selecthtd(proname);
+        List<String> fileName = new ArrayList<>();
+        if (htdList!=null){
+            for (Map<String, Object> map1 : htdList) {
+                String htd = map1.get("htd").toString();
+                String lxbs = map1.get("lxbs").toString();
+                if (lxbs.equals("主线")){
+                    fileName.add(htd+File.separator+"20路面构造深度");
+                }else {
+                    fileName.add(htd+File.separator+"63互通构造深度-"+lxbs);
+                }
+                /*List<Map<String,Object>> lxlist = jjgZdhGzsdJgfcService.selectlx(proname,htd);
+                for (Map<String, Object> map : lxlist) {
+                    String lxbs = map.get("lxbs").toString();
+                    if (lxbs.equals("主线")){
+                        fileName.add(htd+File.separator+"20路面构造深度");
+                    }else {
+                        fileName.add(htd+File.separator+"63互通构造深度-"+lxbs);
+                    }
+                }*/
+            }
+        }
+        String zipname = "构造深度鉴定表";
+        JjgFbgcCommonUtils.batchDowndFile(response,zipname,fileName,jgfilepath+ File.separator+proname);
+    }
+
+    @ApiOperation("全部删除")
+    @DeleteMapping("removeAll")
+    public Result removeAll(@RequestBody CommonInfoVo commonInfoVo){
+        String proname = commonInfoVo.getProname();
+        String htd = commonInfoVo.getHtd();
+        QueryWrapper<JjgZdhGzsdJgfc> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("proname",proname);
+        boolean remove = jjgZdhGzsdJgfcService.remove(queryWrapper);
+        if(remove){
+            return Result.ok();
+        } else {
+            return Result.fail().message("删除失败！");
+        }
+
+    }
+
+    @ApiOperation("生成构造深度鉴定表")
+    @PostMapping("generateJdb")
+    public Result generateJdb(@RequestBody JgCommonEntity commonInfoVo) throws Exception {
+        boolean is_Success =  jjgZdhGzsdJgfcService.generateJdb(commonInfoVo);
+        return is_Success ? Result.ok().code(200).message("成功生成鉴定表") : Result.fail().code(201).message("生成鉴定表失败");
+
+    }
+
+    @ApiOperation("构造深度模板文件导出")
+    @GetMapping("exportgzsd")
+    public void exportgzsd(HttpServletResponse response,@RequestParam String cd) throws IOException {
+        jjgZdhGzsdJgfcService.exportgzsd(response,cd);
+    }
+
+
+    @ApiOperation(value = "构造深度数据文件导入")
+    @PostMapping("importgzsd")
+    public Result importgzsd(@RequestParam("file") MultipartFile file, String proname,String username) throws IOException, ParseException {
+        jjgZdhGzsdJgfcService.importgzsd(file,proname,username);
+        return Result.ok();
+    }
+
+    @PostMapping("findQueryPage/{current}/{limit}")
+    public Result findQueryPage(@PathVariable long current,
+                                @PathVariable long limit,
+                                @RequestBody JjgZdhGzsdJgfc jjgZdhGzsd) {
+        //创建page对象
+        Page<JjgZdhGzsdJgfc> pageParam = new Page<>(current, limit);
+        if (jjgZdhGzsd != null) {
+            QueryWrapper<JjgZdhGzsdJgfc> wrapper = new QueryWrapper<>();
+            wrapper.like("proname", jjgZdhGzsd.getProname());
+
+            if (!StringUtils.isEmpty(jjgZdhGzsd.getQdzh())) {
+                wrapper.eq("qdzh", jjgZdhGzsd.getQdzh());
+            }
+            if (!StringUtils.isEmpty(jjgZdhGzsd.getZdzh())) {
+                wrapper.eq("zdzh", jjgZdhGzsd.getZdzh());
+            }
+
+            //调用方法分页查询
+            IPage<JjgZdhGzsdJgfc> pageModel = jjgZdhGzsdJgfcService.page(pageParam, wrapper);
+            //返回
+            return Result.ok(pageModel);
+        }
+        return Result.ok().message("无数据");
+    }
+
+
+    @ApiOperation("批量删除构造深度数据")
+    @DeleteMapping("removeBatch")
+    public Result removeBeatch(@RequestBody List<String> idList){
+        boolean hd = jjgZdhGzsdJgfcService.removeByIds(idList);
+        if(hd){
+            return Result.ok();
+        } else {
+            return Result.fail().message("删除失败！");
+        }
+
+    }
+
+
+}
+
