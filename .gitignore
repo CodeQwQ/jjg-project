@@ -1,0 +1,5 @@
+# 忽略后端的.idea文件
+jjgys-parent/.idea/
+
+#忽略前端的node_modules文件
+jjgys_vue/node_modules/
