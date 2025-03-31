@@ -37,6 +37,8 @@ import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -2452,7 +2454,7 @@ public class JjgZdhMcxsServiceImpl extends ServiceImpl<JjgZdhMcxsMapper, JjgZdhM
                 if (num == 1){
                     num+=1;
                 }
-                List<Map<String, Object>> looksdjdb = lookjdb(proname, htd, zx,num);
+                List<Map<String, Object>> looksdjdb = lookjdb(proname, htd, zx,num,1);
                 mapList.addAll(looksdjdb);
             }
             return mapList;
@@ -2464,7 +2466,7 @@ public class JjgZdhMcxsServiceImpl extends ServiceImpl<JjgZdhMcxsMapper, JjgZdhM
 
 
     @Override
-    public List<Map<String, Object>> lookJdbjg(CommonInfoVo commonInfoVo) throws IOException {
+    public List<Map<String, Object>> lookJdbjg(CommonInfoVo commonInfoVo, int flag) throws IOException {
         String proname = commonInfoVo.getProname();
         String htd = commonInfoVo.getHtd();
         List<Map<String, Object>> mapList = new ArrayList<>();
@@ -2477,7 +2479,7 @@ public class JjgZdhMcxsServiceImpl extends ServiceImpl<JjgZdhMcxsMapper, JjgZdhM
                 if (num == 1){
                     num+=1;
                 }
-                List<Map<String, Object>> looksdjdb = lookjdb(proname, htd, zx,num);
+                List<Map<String, Object>> looksdjdb = lookjdb(proname, htd, zx,num,flag);
                 mapList.addAll(looksdjdb);
             }
             return mapList;
@@ -2494,7 +2496,7 @@ public class JjgZdhMcxsServiceImpl extends ServiceImpl<JjgZdhMcxsMapper, JjgZdhM
      * @param cds
      * @return
      */
-    private List<Map<String, Object>> lookjdb(String proname, String htd, String zx, int cds) throws IOException {
+    private List<Map<String, Object>> lookjdb(String proname, String htd, String zx, int cds, int flag) throws IOException {
         DecimalFormat df = new DecimalFormat("0.00");
         DecimalFormat decf = new DecimalFormat("0.##");
         File f;
@@ -2502,16 +2504,21 @@ public class JjgZdhMcxsServiceImpl extends ServiceImpl<JjgZdhMcxsMapper, JjgZdhM
         int htdcl = 0;
         int zdscd = 3*cds+3;
         int sjzcd = cds*2+3;
+        int fbgc = 0; // 分部工程位置,车道数应该就是只有2，3，4，5
         if (cds == 2){
             pronamecl = 1;
             htdcl = 7;
+            fbgc = 4;
         }else {
             if (cds == 5){
                 pronamecl = 1;
                 htdcl = 9;
                 zdscd = 12;
                 sjzcd = 9;
+                fbgc = 5;
             }else {
+                if(cds == 3) fbgc = 5;
+                else if(cds == 4) fbgc = 7;
                 pronamecl = 2;
                 htdcl =  cds*3;
             }
@@ -2535,29 +2542,92 @@ public class JjgZdhMcxsServiceImpl extends ServiceImpl<JjgZdhMcxsMapper, JjgZdhM
 
 
                     if (proname.equals(xmname.toString()) && htd.equals(htdname.toString())) {
-                        slSheet.getRow(1).getCell(zdscd).setCellType(CellType.STRING);//总点数zdscd
-                        slSheet.getRow(1).getCell(zdscd+1).setCellType(CellType.STRING);//合格点数zdscd+1
+                        if (flag == 1 || wb.getSheetName(j).contains("路面")) {
+                            slSheet.getRow(1).getCell(zdscd).setCellType(CellType.STRING);//总点数zdscd
+                            slSheet.getRow(1).getCell(zdscd + 1).setCellType(CellType.STRING);//合格点数zdscd+1
 
-                        slSheet.getRow(1).getCell(zdscd+3).setCellType(CellType.STRING);//zdscd+3
-                        slSheet.getRow(1).getCell(zdscd+4).setCellType(CellType.STRING);//zdscd+4
-                        slSheet.getRow(37).getCell(sjzcd).setCellType(CellType.STRING);//sjzcd
-                        double zds = Double.valueOf(slSheet.getRow(1).getCell(zdscd).getStringCellValue());//zdscd
-                        double hgds = Double.valueOf(slSheet.getRow(1).getCell(zdscd+1).getStringCellValue());//zdscd+1
-                        String zdsz1 = decf.format(zds);
-                        String hgdsz1 = decf.format(hgds);
-                        Map map = new HashMap();
-                        map.put("检测项目", zx);
-                        map.put("路面类型", wb.getSheetName(j));
-                        map.put("总点数", zdsz1);
-                        map.put("设计值", slSheet.getRow(37).getCell(sjzcd).getStringCellValue());//sjzcd
-                        map.put("合格点数", hgdsz1);
-                        map.put("合格率", zds!=0 ? df.format(hgds/zds*100) : 0);
-                        map.put("Min", slSheet.getRow(1).getCell(zdscd+4).getStringCellValue());//zdscd+4
-                        map.put("Max", slSheet.getRow(1).getCell(zdscd+3).getStringCellValue());//zdscd+3
-                        jgmap.add(map);
+                            slSheet.getRow(1).getCell(zdscd + 3).setCellType(CellType.STRING);//zdscd+3
+                            slSheet.getRow(1).getCell(zdscd + 4).setCellType(CellType.STRING);//zdscd+4
+                            slSheet.getRow(37).getCell(sjzcd).setCellType(CellType.STRING);//sjzcd
+                            double zds = Double.valueOf(slSheet.getRow(1).getCell(zdscd).getStringCellValue());//zdscd
+                            double hgds = Double.valueOf(slSheet.getRow(1).getCell(zdscd + 1).getStringCellValue());//zdscd+1
+                            String zdsz1 = decf.format(zds);
+                            String hgdsz1 = decf.format(hgds);
+                            Map map = new HashMap();
+                            map.put("检测项目", zx);
+                            map.put("路面类型", wb.getSheetName(j));
+
+                            // 拿到分部工程,这个指标的表格的分部工程位置不一样
+                            slSheet.getRow(1).getCell(fbgc).setCellType(CellType.STRING);
+                            // 同时匹配中文和英文括号的正则表达式
+                            String s = slSheet.getRow(1).getCell(fbgc).toString();
+                            Pattern pattern = Pattern.compile("[(（]([^)）]*)[)）]");
+                            Matcher matcher = pattern.matcher(s);
+                            if (matcher.find()) {
+                                // 提取第一个捕获组（括号内的内容）
+                                String content = matcher.group(1);
+                                map.put("分部工程名称", content);
+                            } else {
+                                map.put("分部工程名称", s);
+                            }
+
+                            map.put("总点数", zdsz1);
+                            map.put("设计值", slSheet.getRow(37).getCell(sjzcd).getStringCellValue());//sjzcd
+                            map.put("合格点数", hgdsz1);
+                            map.put("合格率", zds != 0 ? df.format(hgds / zds * 100) : 0);
+                            map.put("Min", slSheet.getRow(1).getCell(zdscd + 4).getStringCellValue());//zdscd+4
+                            map.put("Max", slSheet.getRow(1).getCell(zdscd + 3).getStringCellValue());//zdscd+3
+                            jgmap.add(map);
+                        } else if (flag == 2) {
+                            // 遍历工作表行处理每个表格
+                            for (int i = slSheet.getFirstRowNum(); i <= slSheet.getLastRowNum(); i++) {
+                                XSSFRow currentRow = slSheet.getRow(i);
+                                if (currentRow == null) continue;
+
+                                // 表格开始：发现"鉴定表"行
+                                if (currentRow.getCell(0).toString().contains("鉴定表")) {
+                                    Map map = new HashMap();
+                                    map.put("检测项目", zx);
+                                    map.put("路面类型", wb.getSheetName(j));
+
+                                    // 拿到分部工程,这个指标的表格
+                                    slSheet.getRow(i + 1).getCell(fbgc).setCellType(CellType.STRING);
+                                    // 同时匹配中文和英文括号的正则表达式
+                                    String s = slSheet.getRow(i + 1).getCell(fbgc).toString();
+                                    Pattern pattern = Pattern.compile("[(（]([^)）]*)[)）]");
+                                    Matcher matcher = pattern.matcher(s);
+                                    if (matcher.find()) {
+                                        // 提取第一个捕获组（括号内的内容）
+                                        String content = matcher.group(1);
+                                        map.put("分部工程名称", content);
+                                    } else {
+                                        map.put("分部工程名称", s);
+                                    }
+
+                                    // 总点数、合格点数
+                                    slSheet.getRow(i + 2).getCell(zdscd).setCellType(CellType.STRING);//总点数zdscd
+                                    slSheet.getRow(i + 2).getCell(zdscd + 1).setCellType(CellType.STRING);//合格点数zdscd+1
+                                    slSheet.getRow(i + 38).getCell(zdscd + 3).setCellType(CellType.STRING);//最大值
+                                    slSheet.getRow(i + 38).getCell(zdscd + 4).setCellType(CellType.STRING);// 最小值
+                                    slSheet.getRow(i + 37).getCell(sjzcd).setCellType(CellType.STRING);//设计值
+
+                                    double zds = Double.valueOf(slSheet.getRow(i + 2).getCell(zdscd).getStringCellValue());//zdscd
+                                    double hgds = Double.valueOf(slSheet.getRow(i + 2).getCell(zdscd + 1).getStringCellValue());//zdscd+1
+                                    String zdsz1 = decf.format(zds);
+                                    String hgdsz1 = decf.format(hgds);
+                                    map.put("总点数", zdsz1);
+                                    map.put("设计值", slSheet.getRow(i + 37).getCell(sjzcd).getStringCellValue());//sjzcd
+                                    map.put("合格点数", hgdsz1);
+                                    map.put("合格率", zds != 0 ? df.format(hgds / zds * 100) : 0);
+                                    map.put("Min", slSheet.getRow(i + 38).getCell(zdscd + 4).getStringCellValue());//zdscd+4
+                                    map.put("Max", slSheet.getRow(i + 38).getCell(zdscd + 3).getStringCellValue());//zdscd+3
+                                    jgmap.add(map);
+                                }
+                            }
+                        }
+
+
                     }
-
-
                 }
             }
             return jgmap;

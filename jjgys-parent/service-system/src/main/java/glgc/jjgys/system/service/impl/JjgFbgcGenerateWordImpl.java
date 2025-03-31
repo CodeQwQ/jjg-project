@@ -617,7 +617,7 @@ public class JjgFbgcGenerateWordImpl extends ServiceImpl<JjgFbgcGenerateWordMapp
                     }
 
                     List<Map<String, Object>> wclist = jjgFbgcLmgcLmwcService.lookJdbjg(commonInfoVo);
-                    List<Map<String, Object>> wclcflist = jjgFbgcLmgcLmwcLcfService.lookJdbjg(commonInfoVo);
+                    List<Map<String, Object>> wclcflist = jjgFbgcLmgcLmwcLcfService.lookJdbjg(commonInfoVo,1);
                     if (wclist != null && wclist.size() > 0){
                         for (Map<String, Object> stringObjectMap : wclist) {
                             wczds += Double.valueOf(stringObjectMap.get("检测单元数").toString());
@@ -631,7 +631,7 @@ public class JjgFbgcGenerateWordImpl extends ServiceImpl<JjgFbgcGenerateWordMapp
                         }
                     }
 
-                    List<Map<String, Object>> ssxslist = jjgFbgcLmgcLmssxsService.lookJdbjg(commonInfoVo);
+                    List<Map<String, Object>> ssxslist = jjgFbgcLmgcLmssxsService.lookJdbjg(commonInfoVo,1);
                     if (ssxslist != null && ssxslist.size() > 0){
                         for (Map<String, Object> stringObjectMap : ssxslist) {
                             ssxszds += Double.valueOf(stringObjectMap.get("检测点数").toString());
@@ -639,7 +639,7 @@ public class JjgFbgcGenerateWordImpl extends ServiceImpl<JjgFbgcGenerateWordMapp
                         }
                     }
 
-                    List<Map<String, Object>> pzdlist = jjgZdhPzdService.lookJdbjg(commonInfoVo);
+                    List<Map<String, Object>> pzdlist = jjgZdhPzdService.lookJdbjg(commonInfoVo, 1);
                     if (pzdlist != null && pzdlist.size() > 0){
                         for (Map<String, Object> stringObjectMap : pzdlist) {
                             pzdzds += Double.valueOf(stringObjectMap.get("总点数").toString());
@@ -647,7 +647,7 @@ public class JjgFbgcGenerateWordImpl extends ServiceImpl<JjgFbgcGenerateWordMapp
                         }
                     }
 
-                    List<Map<String, Object>> mcxslist = jjgZdhMcxsService.lookJdbjg(commonInfoVo);
+                    List<Map<String, Object>> mcxslist = jjgZdhMcxsService.lookJdbjg(commonInfoVo,1);
                     if (mcxslist != null && mcxslist.size() > 0){
                         for (Map<String, Object> stringObjectMap : mcxslist) {
                             mcxszds += Double.valueOf(stringObjectMap.get("总点数").toString());
@@ -655,14 +655,14 @@ public class JjgFbgcGenerateWordImpl extends ServiceImpl<JjgFbgcGenerateWordMapp
                         }
                     }
 
-                    List<Map<String, Object>> gzsdlist = jjgZdhGzsdService.lookJdbjg(commonInfoVo);
+                    List<Map<String, Object>> gzsdlist = jjgZdhGzsdService.lookJdbjg(commonInfoVo, 1);
                     if (gzsdlist != null && gzsdlist.size() > 0){
                         for (Map<String, Object> stringObjectMap : gzsdlist) {
                             gzsdzds += Double.valueOf(stringObjectMap.get("总点数").toString());
                             gzsdhgds += Double.valueOf(stringObjectMap.get("合格点数").toString());
                         }
                     }
-                    List<Map<String, Object>> czlist = jjgZdhCzService.lookJdbjg(commonInfoVo);
+                    List<Map<String, Object>> czlist = jjgZdhCzService.lookJdbjg(commonInfoVo, 1);
                     if (czlist != null && czlist.size() > 0){
                         for (Map<String, Object> stringObjectMap : czlist) {
                             czzds += Double.valueOf(stringObjectMap.get("总点数").toString());

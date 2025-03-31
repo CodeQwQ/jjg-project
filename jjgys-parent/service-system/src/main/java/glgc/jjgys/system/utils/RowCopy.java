@@ -159,7 +159,7 @@ public class RowCopy {
         for (i = 0; i < sourceSheet.getNumMergedRegions(); i++) {
             region = sourceSheet.getMergedRegion(i);
             if ((region.getFirstRow() >= pStartRow) && (region.getLastRow()) <= pEndRow) {
-                targetRowFrom = region.getFirstRow() - pStartRow + pPosition;
+                targetRowFrom = region.getFirstRow() - pStartRow + pPosition; // 先减是算相对位置（源），再加是算目标表格的绝对位置
                 targetRowTo = region.getLastRow() - pStartRow + pPosition;
                 region.setFirstRow(targetRowFrom);
                 region.setLastRow(targetRowTo);
@@ -172,8 +172,7 @@ public class RowCopy {
             if (sourceRow != null) {
                 for (j = sourceRow.getLastCellNum(); j > sourceRow
                         .getFirstCellNum(); j--) {
-                    targetSheet
-                            .setColumnWidth(j, sourceSheet.getColumnWidth(j));
+                    targetSheet.setColumnWidth(j, sourceSheet.getColumnWidth(j));
                     targetSheet.setColumnHidden(j, false);
                 }
                 break;

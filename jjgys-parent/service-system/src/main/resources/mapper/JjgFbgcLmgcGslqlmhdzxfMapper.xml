@@ -28,7 +28,7 @@
 
 
     <select id="selectsdzf" resultType="glgc.jjgys.model.project.JjgFbgcLmgcGslqlmhdzxf" parameterType="java.lang.String">
-        SELECT * FROM jjg_fbgc_lmgc_gslqlmhdzxf where proname = #{proname} and htd = #{htd} and fbgc= #{fbgc} and lx = '隧'  AND zh Like 'Z%'
+        SELECT * FROM jjg_fbgc_lmgc_gslqlmhdzxf where proname = #{proname} and htd = #{htd} and fbgc= #{fbgc} and lx like '%隧%'  AND zh Like 'Z%'
         <if test="idlist!=null">
             and userid in
             <foreach item="item" index="index" collection="idlist"
@@ -41,7 +41,7 @@
 
 
     <select id="selectsdyf" resultType="glgc.jjgys.model.project.JjgFbgcLmgcGslqlmhdzxf" parameterType="java.lang.String">
-        SELECT * FROM jjg_fbgc_lmgc_gslqlmhdzxf where proname = #{proname} and htd = #{htd} and fbgc= #{fbgc} and lx = '隧'  AND zh Like 'Y%'
+        SELECT * FROM jjg_fbgc_lmgc_gslqlmhdzxf where proname = #{proname} and htd = #{htd} and fbgc= #{fbgc} and lx like '%隧%'  AND zh Like 'Y%'
         <if test="idlist!=null">
             and userid in
             <foreach item="item" index="index" collection="idlist"

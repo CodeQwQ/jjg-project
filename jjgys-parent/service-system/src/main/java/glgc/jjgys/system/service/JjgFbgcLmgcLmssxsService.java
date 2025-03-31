@@ -23,7 +23,7 @@ public interface JjgFbgcLmgcLmssxsService extends IService<JjgFbgcLmgcLmssxs> {
 
     Boolean generateJdb(CommonInfoVo commonInfoVo) throws IOException, ParseException;
 
-    List<Map<String, Object>> lookJdbjg(CommonInfoVo commonInfoVo) throws IOException;
+    List<Map<String, Object>> lookJdbjg(CommonInfoVo commonInfoVo, int flag) throws IOException;
 
     void exportLmssxs(HttpServletResponse response);
 

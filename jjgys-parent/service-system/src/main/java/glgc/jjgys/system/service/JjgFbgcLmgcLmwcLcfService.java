@@ -20,7 +20,7 @@ import java.util.Map;
  */
 public interface JjgFbgcLmgcLmwcLcfService extends IService<JjgFbgcLmgcLmwcLcf> {
 
-    List<Map<String, Object>> lookJdbjg(CommonInfoVo commonInfoVo) throws IOException;
+    List<Map<String, Object>> lookJdbjg(CommonInfoVo commonInfoVo, int flag) throws IOException;
 
     boolean generateJdb(CommonInfoVo commonInfoVo) throws IOException;
 

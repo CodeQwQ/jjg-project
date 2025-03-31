@@ -60,7 +60,7 @@ public class JjgFbgcLmgcLmwcLcfController {
     @ApiOperation("查看路面弯沉落锤法鉴定结果")
     @PostMapping("lookJdbjg")
     public Result lookJdbjg(@RequestBody CommonInfoVo commonInfoVo) throws IOException {
-        List<Map<String,Object>> jdjg = jjgFbgcLmgcLmwcLcfService.lookJdbjg(commonInfoVo);
+        List<Map<String,Object>> jdjg = jjgFbgcLmgcLmwcLcfService.lookJdbjg(commonInfoVo,1);
         return Result.ok(jdjg);
 
     }

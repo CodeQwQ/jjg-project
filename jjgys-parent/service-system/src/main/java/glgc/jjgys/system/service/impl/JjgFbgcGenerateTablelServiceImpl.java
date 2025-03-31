@@ -744,22 +744,42 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
                     resultlist.addAll(resultwc);
                     break;
                 case "13路面弯沉(落锤法).xlsx":
-                    List<Map<String, Object>> wclcflist = jjgFbgcLmgcLmwcLcfService.lookJdbjg(commonInfoVo);
+                    List<Map<String, Object>> wclcflist = jjgFbgcLmgcLmwcLcfService.lookJdbjg(commonInfoVo, flag);
                     List<Map<String, Object>> resultwclcf = new ArrayList<>();
-                    Map<String, Object> wclcfMap = new HashMap<>();
-                    wclcfMap.put("filename","详见《路面弯沉质量鉴定结果汇总表》检测"+wclcflist.get(0).get("检测单元数")+"个评定单元,合格"+wclcflist.get(0).get("合格单元数")+"个评定单元");
-                    wclcfMap.put("ccname","△沥青路面弯沉(落锤法)");
-                    wclcfMap.put("ccname2","落锤法");
-                    wclcfMap.put("sheetname","分部-路面");
-                    wclcfMap.put("fbgc","路面面层");
-                    wclcfMap.put("合格率",wclcflist.get(0).get("合格率"));
-                    wclcfMap.put("yxps",wclcflist.get(0).get("规定值"));
-                    resultwclcf.add(wclcfMap);
+                    if(flag==1){
+                        Map<String, Object> wclcfMap = new HashMap<>();
+                        wclcfMap.put("filename","详见《路面弯沉质量鉴定结果汇总表》检测"+wclcflist.get(0).get("检测单元数")+"个评定单元,合格"+wclcflist.get(0).get("合格单元数")+"个评定单元");
+                        wclcfMap.put("ccname","△沥青路面弯沉(落锤法)");
+                        wclcfMap.put("ccname2","落锤法");
+                        wclcfMap.put("sheetname","分部-路面");
+                        wclcfMap.put("fbgc","路面面层");
+                        wclcfMap.put("合格率",wclcflist.get(0).get("合格率"));
+                        wclcfMap.put("yxps",wclcflist.get(0).get("规定值"));
+                        resultwclcf.add(wclcfMap);
+                    }else if(flag==2){
+                        // 这一part只有路面互通和连接线，没有桥没有隧
+                        for (Map<String, Object> map : wclcflist) {
+                            Map<String, Object> wclcfMap = new HashMap<>();
+                            if (map.get("分部工程名称").toString().equals("路面/互通类")){
+                                wclcfMap.put("filename","详见《路面弯沉质量鉴定结果汇总表》检测"+wclcflist.get(0).get("检测单元数")+"个评定单元,合格"+wclcflist.get(0).get("合格单元数")+"个评定单元");
+                                wclcfMap.put("ccname","△沥青路面弯沉(落锤法)");
+                            }else{
+                                wclcfMap.put("filename","详见《连接线路面弯沉质量鉴定结果汇总表》检测"+wclcflist.get(0).get("检测单元数")+"个评定单元,合格"+wclcflist.get(0).get("合格单元数")+"个评定单元");
+                                wclcfMap.put("ccname","△沥青路面弯沉(落锤法)(连接线)");
+                            }
+                            wclcfMap.put("ccname2","落锤法");
+                            wclcfMap.put("sheetname","分部-路面");
+                            wclcfMap.put("fbgc","路面面层");
+                            wclcfMap.put("合格率",wclcflist.get(0).get("合格率"));
+                            wclcfMap.put("yxps",wclcflist.get(0).get("规定值"));
+                            resultwclcf.add(wclcfMap);
+                        }
+                    }
                     resultlist.addAll(resultwclcf);
                     break;
                 case "15沥青路面渗水系数.xlsx":
                     //分工作簿
-                    List<Map<String, Object>> ssxslist = jjgFbgcLmgcLmssxsService.lookJdbjg(commonInfoVo);
+                    List<Map<String, Object>> ssxslist = jjgFbgcLmgcLmssxsService.lookJdbjg(commonInfoVo, flag);
                     List<Map<String, Object>> resultss = new ArrayList<>();
                     double sdssjcds = 0; // 隧道渗水检测点数
                     double sdsshgds = 0;
@@ -771,73 +791,119 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
                     String lmssgdz="";
                     String ljxssgdz="";
                     boolean sda = false,lma = false, ljxa = false;
-                    for (Map<String, Object> map : ssxslist) {
-                        if (map.get("检测项目").toString().contains("沥青路面")){
-                            sda = true;
-                            sdssjcds += Double.valueOf(map.get("检测点数").toString());
-                            sdsshgds += Double.valueOf(map.get("合格点数").toString());
-                            sdssgdz = map.get("规定值").toString();
+                    if(flag == 1){
+                        for (Map<String, Object> map : ssxslist) {
+                            if (map.get("检测项目").toString().contains("沥青路面")){
+                                sda = true;
+                                sdssjcds += Double.valueOf(map.get("检测点数").toString());
+                                sdsshgds += Double.valueOf(map.get("合格点数").toString());
+                                sdssgdz = map.get("规定值").toString();
 
-                        }
-                        if (map.get("检测项目").toString().contains("隧道路面")){
-                            lma = true;
+                            }
+                            if (map.get("检测项目").toString().contains("隧道路面")){
+                                lma = true;
 
-                            lmssjcds += Double.valueOf(map.get("检测点数").toString());
-                            lmsshgds += Double.valueOf(map.get("合格点数").toString());
-                            lmssgdz = map.get("规定值").toString();
-                        }
-                        if (map.get("检测项目").toString().contains("连接线路面")){
-                            ljxa = true;
+                                lmssjcds += Double.valueOf(map.get("检测点数").toString());
+                                lmsshgds += Double.valueOf(map.get("合格点数").toString());
+                                lmssgdz = map.get("规定值").toString();
+                            }
+                            if (map.get("检测项目").toString().contains("连接线路面")){
+                                ljxa = true;
 
-                            ljxssjcds += Double.valueOf(map.get("检测点数").toString());
-                            ljxsshgds += Double.valueOf(map.get("合格点数").toString());
-                            ljxssgdz = map.get("规定值").toString();
+                                ljxssjcds += Double.valueOf(map.get("检测点数").toString());
+                                ljxsshgds += Double.valueOf(map.get("合格点数").toString());
+                                ljxssgdz = map.get("规定值").toString();
+                            }
                         }
-                    }
-                    if (sda){
-                        double ssgdz1 = Double.valueOf(sdssgdz);
-                        String ssgdz2= String.valueOf(ssgdz1);
-                        Map<String, Object> newMapss = new HashMap<>();
-                        newMapss.put("filename","详见《沥青路面渗水系数质量鉴定表》检测"+decf.format(sdssjcds)+"点,合格"+decf.format(sdsshgds)+"点");
-                        newMapss.put("ccname", "沥青路面渗水系数(路面面层)");
-                        newMapss.put("ccname2", "路面面层");
-                        newMapss.put("yxps", ssgdz2);
-                        newMapss.put("sheetname", "分部-路面");
-                        newMapss.put("fbgc", "路面面层");
-                        newMapss.put("检测点数", decf.format(sdssjcds));
-                        newMapss.put("合格点数", decf.format(sdsshgds));
-                        newMapss.put("合格率", (sdssjcds != 0) ? df.format(sdsshgds/sdssjcds*100) : "0");
-                        resultss.add(newMapss);
-                    }
-                    if (lma){
-                        double ssgdz3 = Double.valueOf(lmssgdz);
-                        String ssgdz4 = String.valueOf(ssgdz3);
-                        Map<String, Object> newMapss1 = new HashMap<>();
-                        newMapss1.put("filename","详见《沥青路面渗水系数质量鉴定表》检测"+decf.format(lmssjcds)+"点,合格"+decf.format(lmsshgds)+"点");
-                        newMapss1.put("ccname", "沥青路面渗水系数(隧道路面)");
-                        newMapss1.put("ccname2", "隧道路面");
-                        newMapss1.put("yxps", ssgdz4);
-                        newMapss1.put("sheetname", "分部-路面");
-                        newMapss1.put("fbgc", "路面面层");
-                        newMapss1.put("检测点数", decf.format(lmssjcds));
-                        newMapss1.put("合格点数", decf.format(lmsshgds));
-                        newMapss1.put("合格率", (lmssjcds != 0) ? df.format(lmsshgds/lmssjcds*100) : "0");
-                        resultss.add(newMapss1);
-                    }
-                    if (ljxa){
-                        double ssgdz5 = Double.valueOf(ljxssgdz);
-                        String ssgdz6 = String.valueOf(ssgdz5);
-                        Map<String, Object> newMapss1 = new HashMap<>();
-                        newMapss1.put("filename","详见《沥青路面渗水系数质量鉴定表》检测"+decf.format(ljxssjcds)+"点,合格"+decf.format(ljxsshgds)+"点");
-                        newMapss1.put("ccname", "沥青路面渗水系数(连接线路面)");
-                        newMapss1.put("ccname2", "隧道路面");
-                        newMapss1.put("yxps", ssgdz6);
-                        newMapss1.put("sheetname", "分部-路面");
-                        newMapss1.put("fbgc", "路面面层");
-                        newMapss1.put("检测点数", decf.format(ljxssjcds));
-                        newMapss1.put("合格点数", decf.format(ljxsshgds));
-                        newMapss1.put("合格率", (ljxssjcds != 0) ? df.format(ljxsshgds/ljxssjcds*100) : "0");
-                        resultss.add(newMapss1);
+                        if (sda){
+                            double ssgdz1 = Double.valueOf(sdssgdz);
+                            String ssgdz2= String.valueOf(ssgdz1);
+                            Map<String, Object> newMapss = new HashMap<>();
+                            newMapss.put("filename","详见《沥青路面渗水系数质量鉴定表》检测"+decf.format(sdssjcds)+"点,合格"+decf.format(sdsshgds)+"点");
+                            newMapss.put("ccname", "沥青路面渗水系数(路面面层)");
+                            newMapss.put("ccname2", "路面面层");
+                            newMapss.put("yxps", ssgdz2);
+                            newMapss.put("sheetname", "分部-路面");
+                            newMapss.put("fbgc", "路面面层");
+                            newMapss.put("检测点数", decf.format(sdssjcds));
+                            newMapss.put("合格点数", decf.format(sdsshgds));
+                            newMapss.put("合格率", (sdssjcds != 0) ? df.format(sdsshgds/sdssjcds*100) : "0");
+                            resultss.add(newMapss);
+                        }
+                        if (lma){
+                            double ssgdz3 = Double.valueOf(lmssgdz);
+                            String ssgdz4 = String.valueOf(ssgdz3);
+                            Map<String, Object> newMapss1 = new HashMap<>();
+                            newMapss1.put("filename","详见《沥青路面渗水系数质量鉴定表》检测"+decf.format(lmssjcds)+"点,合格"+decf.format(lmsshgds)+"点");
+                            newMapss1.put("ccname", "沥青路面渗水系数(隧道路面)");
+                            newMapss1.put("ccname2", "隧道路面");
+                            newMapss1.put("yxps", ssgdz4);
+                            newMapss1.put("sheetname", "分部-路面");
+                            newMapss1.put("fbgc", "路面面层");
+                            newMapss1.put("检测点数", decf.format(lmssjcds));
+                            newMapss1.put("合格点数", decf.format(lmsshgds));
+                            newMapss1.put("合格率", (lmssjcds != 0) ? df.format(lmsshgds/lmssjcds*100) : "0");
+                            resultss.add(newMapss1);
+                        }
+                        if (ljxa){
+                            double ssgdz5 = Double.valueOf(ljxssgdz);
+                            String ssgdz6 = String.valueOf(ssgdz5);
+                            Map<String, Object> newMapss1 = new HashMap<>();
+                            newMapss1.put("filename","详见《沥青路面渗水系数质量鉴定表》检测"+decf.format(ljxssjcds)+"点,合格"+decf.format(ljxsshgds)+"点");
+                            newMapss1.put("ccname", "沥青路面渗水系数(连接线路面)");
+                            newMapss1.put("ccname2", "隧道路面");
+                            newMapss1.put("yxps", ssgdz6);
+                            newMapss1.put("sheetname", "分部-路面");
+                            newMapss1.put("fbgc", "路面面层");
+                            newMapss1.put("检测点数", decf.format(ljxssjcds));
+                            newMapss1.put("合格点数", decf.format(ljxsshgds));
+                            newMapss1.put("合格率", (ljxssjcds != 0) ? df.format(ljxsshgds/ljxssjcds*100) : "0");
+                            resultss.add(newMapss1);
+                        }
+                    }else if(flag == 2){
+                        ssxslist = processSsxsMapList(ssxslist);
+                        for(Map<String, Object> map1 : ssxslist){
+                            sdssjcds = 0;
+                            sdsshgds = 0;
+                            sdssgdz = "";
+
+                            sdssjcds = Double.valueOf(map1.get("检测点数").toString());
+                            sdsshgds = Double.valueOf(map1.get("合格点数").toString());
+                            sdssgdz = map1.get("规定值").toString();
+
+                            // 填写数据
+                            Map<String, Object> map = new HashMap<>();
+                            // 分情况
+
+                            if(map1.get("分部工程名称").toString().contains("连接线")) {
+                                map.put("filename","详见《连接线沥青路面渗水系数质量鉴定表》检测"+decf.format(sdssjcds)+"点,合格"+decf.format(sdsshgds)+"点");
+                                map.put("ccname", "沥青路面渗水系数(连接线)");
+                                map.put("ccname2", "路面面层");
+                                map.put("sheetname", "分部-路面");
+                            }else if(map1.get("分部工程名称").toString().contains("路面")){
+                                map.put("filename","详见《沥青路面渗水系数质量鉴定表》检测"+decf.format(sdssjcds)+"点,合格"+decf.format(sdsshgds)+"点");
+                                map.put("ccname", "沥青路面渗水系数(路面面层)");
+                                map.put("ccname2", "路面面层");
+                                map.put("sheetname", "分部-路面");
+                            }
+
+                            else if (map1.get("分部工程名称").toString().contains("隧道")){
+                                map.put("filename","详见《沥青路面渗水系数质量鉴定表》检测"+decf.format(sdssjcds)+"点,合格"+decf.format(sdsshgds)+"点");
+                                map.put("ccname", "沥青路面渗水系数(隧道路面)");
+                                map.put("ccname2", "隧道路面");
+                                map.put("sheetname", "分部-"+ map1.get("分部工程名称").toString());
+                            }
+
+
+
+                            //map.put("ccname3", "沥青路面");
+                            map.put("yxps", sdssgdz);
+                            map.put("fbgc", "路面面层");
+                            map.put("检测点数", decf.format(sdssjcds));
+                            map.put("合格点数", decf.format(sdsshgds));
+                            map.put("合格率", (sdsshgds != 0) ? df.format(sdsshgds/sdssjcds*100) : "0");
+                            resultss.add(map);
+                        }
                     }
                     resultlist.addAll(resultss);
                     break;
@@ -903,77 +969,184 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
                     double hdhgds2 = 0;
                     String sjz12 = "";
                     String sjz22 = "";
-                    for (Map<String, Object> map : list3) {
-                        if (map.get("路面类型").toString().contains("隧道")){
-                            hdjcds += Double.valueOf(map.get("总厚度检测点数").toString())+Double.valueOf(map.get("上面层厚度检测点数").toString());
-                            hdhgds += Double.valueOf(map.get("总厚度合格点数").toString())+Double.valueOf(map.get("上面层厚度合格点数").toString());
 
-                            sjz1 = map.get("总厚度设计值").toString();
-                            sjz2 = map.get("上面层设计值").toString();
+                    if(flag == 1){
+                        for (Map<String, Object> map : list3) {
+                            if (map.get("路面类型").toString().contains("隧道")){
+
+                                hdjcds += Double.valueOf(map.get("总厚度检测点数").toString())+Double.valueOf(map.get("上面层厚度检测点数").toString());
+                                hdhgds += Double.valueOf(map.get("总厚度合格点数").toString())+Double.valueOf(map.get("上面层厚度合格点数").toString());
+
+                                sjz1 = map.get("总厚度设计值").toString();
+                                sjz2 = map.get("上面层设计值").toString();
 
 
-                        }else if (map.get("路面类型").toString().contains("路面") || map.get("路面类型").toString().contains("路面") ){
-                            hdjcds2 += Double.valueOf(map.get("总厚度检测点数").toString())+Double.valueOf(map.get("上面层厚度检测点数").toString());
-                            hdhgds2 += Double.valueOf(map.get("总厚度合格点数").toString())+Double.valueOf(map.get("上面层厚度合格点数").toString());
+                            }else if (map.get("路面类型").toString().contains("路面") || map.get("路面类型").toString().contains("路面") ){
+                                hdjcds2 += Double.valueOf(map.get("总厚度检测点数").toString())+Double.valueOf(map.get("上面层厚度检测点数").toString());
+                                hdhgds2 += Double.valueOf(map.get("总厚度合格点数").toString())+Double.valueOf(map.get("上面层厚度合格点数").toString());
 
-                            sjz12 = map.get("总厚度设计值").toString();
-                            sjz22 = map.get("上面层设计值").toString();
+                                sjz12 = map.get("总厚度设计值").toString();
+                                sjz22 = map.get("上面层设计值").toString();
 
+                            }
                         }
+                        Map map1 = new HashMap();
+                        Map map2 = new HashMap();
+                        map1.put("检测点数",decf.format(hdjcds));
+                        map1.put("合格点数",decf.format(hdhgds));
+                        map1.put("yxps",sjz1);
+                        map1.put("filename","详见《沥青隧道路面厚度质量鉴定表（钻芯法）》检测"+decf.format(hdjcds)+"点,合格"+decf.format(hdhgds)+"点");
+                        map1.put("ccname","△厚度");
+                        map1.put("ccname2","隧道路面");
+                        map1.put("ccname3","沥青路面");
+                        map1.put("ccname4","钻芯法");
+                        map1.put("fbgc","路面面层");
+                        map1.put("合格率",(hdjcds != 0) ? df.format(hdhgds/hdjcds*100) : "0");
+
+                        map2.put("检测点数",decf.format(hdjcds));
+                        map2.put("合格点数",decf.format(hdhgds));
+                        map2.put("yxps",sjz2);
+                        map2.put("filename","详见《沥青隧道路面厚度质量鉴定表（钻芯法）》检测"+decf.format(hdjcds)+"点,合格"+decf.format(hdhgds)+"点");
+                        map2.put("ccname","△厚度");
+                        map2.put("ccname2","隧道路面");
+                        map2.put("ccname3","沥青路面");
+                        map2.put("ccname4","钻芯法");
+                        map2.put("fbgc","路面面层");
+                        map2.put("合格率",(hdjcds != 0) ? df.format(hdhgds/hdjcds*100) : "0");
+
+                        Map map3 = new HashMap();
+                        Map map4 = new HashMap();
+                        map3.put("检测点数",decf.format(hdjcds2));
+                        map3.put("合格点数",decf.format(hdhgds2));
+                        map3.put("yxps",sjz12);
+                        map3.put("filename","详见《沥青路面厚度质量鉴定表（钻芯法）》检测"+decf.format(hdjcds2)+"点,合格"+decf.format(hdhgds2)+"点");
+                        map3.put("ccname","△厚度");
+                        map3.put("ccname2","路面面层");
+                        map3.put("ccname3","沥青路面");
+                        map3.put("ccname4","钻芯法");
+                        map3.put("fbgc","路面面层");
+                        map3.put("合格率",(hdjcds2 != 0) ? df.format(hdhgds2/hdjcds2*100) : "0");
+
+                        map4.put("检测点数",decf.format(hdjcds2));
+                        map4.put("合格点数",decf.format(hdhgds2));
+                        map4.put("yxps",sjz22);
+                        map4.put("filename","详见《沥青路面厚度质量鉴定表（钻芯法）》检测"+decf.format(hdjcds2)+"点,合格"+decf.format(hdhgds2)+"点");
+                        map4.put("ccname","△厚度");
+                        map4.put("ccname2","路面面层");
+                        map4.put("ccname3","沥青路面");
+                        map4.put("ccname4","钻芯法");
+                        map4.put("fbgc","路面面层");
+                        map4.put("合格率",(hdjcds2 != 0) ? df.format(hdhgds2/hdjcds2*100) : "0");
+                        listhdzxf.add(map1);
+                        listhdzxf.add(map2);
+                        listhdzxf.add(map3);
+                        listhdzxf.add(map4);
+                        resultlist.addAll(listhdzxf);
+                        break;
+                    }else {
+                        // 分开计算
+                        if (list3.size() > 0) {
+                            // 对 mapList 进行排序
+                            Collections.sort(list3, new Comparator<Map<String, Object>>() {
+                                @Override
+                                public int compare(Map<String, Object> o1, Map<String, Object> o2) {
+                                    String roadName1 = (String) o1.get("路面名称");
+                                    String roadName2 = (String) o2.get("路面名称");
+                                    if (roadName1 == null) {
+                                        return roadName2 == null ? 0 : -1;
+                                    }
+                                    if (roadName2 == null) {
+                                        return 1;
+                                    }
+                                    return roadName1.compareTo(roadName2);
+                                }
+                            });
+                        }
+
+                        // 定义统一使用的变量
+                        double totalJcds = 0;
+                        double totalHgds = 0;
+                        String totalSjz1 = "";
+                        String totalSjz2 = "";
+                        String lx_zxf = list3.get(0).get("路面类型").toString();
+                        String roadName =list3.get(0).get("路面名称").toString();
+
+                        for (Map<String, Object> map : list3) {
+
+                            //String roadName = map.get("路面名称").toString();
+
+                            // 累加检测点数和合格点数
+                            double jcds = Double.valueOf(map.get("总厚度检测点数").toString()) + Double.valueOf(map.get("上面层厚度检测点数").toString());
+                            double hgds = Double.valueOf(map.get("总厚度合格点数").toString()) + Double.valueOf(map.get("上面层厚度合格点数").toString());
+
+                            String sjz1_1 = map.get("总厚度设计值").toString();
+                            String sjz2_1 = map.get("上面层设计值").toString();
+
+                            if (roadName.equals(map.get("路面名称").toString())) { // 相同的一类
+                                totalJcds += jcds;
+                                totalHgds += hgds;
+
+                                totalSjz1 = sjz1_1;
+                                totalSjz2 = sjz2_1;
+                            } else {
+                                // 把之前的加入到map
+                                Map<String, Object> resultMap = new HashMap<>();
+                                resultMap.put("检测点数", decf.format(totalJcds));
+                                resultMap.put("合格点数", decf.format(totalHgds));
+                                resultMap.put("yxps", totalSjz1 + "," + totalSjz2); // 先总后上
+                                resultMap.put("filename", "详见《" + getFileName(lx_zxf) + "》检测" + decf.format(totalJcds) + "点,合格" + decf.format(totalHgds) + "点");
+
+                                resultMap.put("ccname2", getCcname2(lx_zxf));
+                                resultMap.put("ccname3", "沥青路面");
+                                resultMap.put("ccname4", "钻芯法");
+                                resultMap.put("fbgc", "路面面层");
+                                // 这个指标的连接线貌似只有路面，如果不是，后面再改正
+                                if(roadName.equals("路") || roadName.contains("连接线")) {
+                                    resultMap.put("sheetname", "分部-路面");
+                                    resultMap.put("ccname", roadName.contains("连接线")? "厚度(连接线)" : "厚度");
+                                }
+                                else {
+                                    resultMap.put("ccname", "厚度");
+                                    resultMap.put("sheetname", "分部-" + roadName);
+                                }
+                                resultMap.put("合格率", (totalJcds != 0) ? df.format(totalHgds / totalJcds * 100) : "0");
+                                listhdzxf.add(resultMap);
+
+                                // 重新初始化
+                                totalJcds = jcds;
+                                totalHgds = hgds;
+
+                                totalSjz1 = sjz1_1;
+                                totalSjz2 = sjz2_1;
+
+                                roadName = map.get("路面名称").toString();
+                                lx_zxf = map.get("路面类型").toString();
+                            }
+                        }
+
+                        // 最后一次循环结束后，还需要将最后的结果加入到list中
+                        if (totalJcds > 0 && totalHgds >= 0) {
+                            Map<String, Object> resultMap = new HashMap<>();
+                            resultMap.put("检测点数", decf.format(totalJcds));
+                            resultMap.put("合格点数", decf.format(totalHgds));
+                            resultMap.put("yxps", totalSjz1 + "," + totalSjz2); // 先总后上
+                            resultMap.put("filename", "详见《" + getFileName(lx_zxf) + "》检测" + decf.format(totalJcds) + "点,合格" + decf.format(totalHgds) + "点");
+                            resultMap.put("ccname", "厚度");
+                            resultMap.put("ccname2", getCcname2(lx));
+                            resultMap.put("ccname3", "沥青路面");
+                            resultMap.put("ccname4", "钻芯法");
+                            resultMap.put("fbgc", "路面面层");
+                            if(roadName.equals("路")|| roadName.contains("连接线")) resultMap.put("sheetname", "分部-路面");
+                            else resultMap.put("sheetname", "分部-" + roadName);
+                            resultMap.put("合格率", (totalJcds != 0) ? df.format(totalHgds / totalJcds * 100) : "0");
+                            listhdzxf.add(resultMap);
+                        }
+
+
+
+                        resultlist.addAll(listhdzxf);
+                        break;
                     }
-                    Map map1 = new HashMap();
-                    Map map2 = new HashMap();
-                    map1.put("检测点数",decf.format(hdjcds));
-                    map1.put("合格点数",decf.format(hdhgds));
-                    map1.put("yxps",sjz1);
-                    map1.put("filename","详见《沥青隧道路面厚度质量鉴定表（钻芯法）》检测"+decf.format(hdjcds)+"点,合格"+decf.format(hdhgds)+"点");
-                    map1.put("ccname","△厚度");
-                    map1.put("ccname2","隧道路面");
-                    map1.put("ccname3","沥青路面");
-                    map1.put("ccname4","钻芯法");
-                    map1.put("fbgc","路面面层");
-                    map1.put("合格率",(hdjcds != 0) ? df.format(hdhgds/hdjcds*100) : "0");
-
-                    map2.put("检测点数",decf.format(hdjcds));
-                    map2.put("合格点数",decf.format(hdhgds));
-                    map2.put("yxps",sjz2);
-                    map2.put("filename","详见《沥青隧道路面厚度质量鉴定表（钻芯法）》检测"+decf.format(hdjcds)+"点,合格"+decf.format(hdhgds)+"点");
-                    map2.put("ccname","△厚度");
-                    map2.put("ccname2","隧道路面");
-                    map2.put("ccname3","沥青路面");
-                    map2.put("ccname4","钻芯法");
-                    map2.put("fbgc","路面面层");
-                    map2.put("合格率",(hdjcds != 0) ? df.format(hdhgds/hdjcds*100) : "0");
-
-                    Map map3 = new HashMap();
-                    Map map4 = new HashMap();
-                    map3.put("检测点数",decf.format(hdjcds2));
-                    map3.put("合格点数",decf.format(hdhgds2));
-                    map3.put("yxps",sjz12);
-                    map3.put("filename","详见《沥青路面厚度质量鉴定表（钻芯法）》检测"+decf.format(hdjcds2)+"点,合格"+decf.format(hdhgds2)+"点");
-                    map3.put("ccname","△厚度");
-                    map3.put("ccname2","路面面层");
-                    map3.put("ccname3","沥青路面");
-                    map3.put("ccname4","钻芯法");
-                    map3.put("fbgc","路面面层");
-                    map3.put("合格率",(hdjcds2 != 0) ? df.format(hdhgds2/hdjcds2*100) : "0");
-
-                    map4.put("检测点数",decf.format(hdjcds2));
-                    map4.put("合格点数",decf.format(hdhgds2));
-                    map4.put("yxps",sjz22);
-                    map4.put("filename","详见《沥青路面厚度质量鉴定表（钻芯法）》检测"+decf.format(hdjcds2)+"点,合格"+decf.format(hdhgds2)+"点");
-                    map4.put("ccname","△厚度");
-                    map4.put("ccname2","路面面层");
-                    map4.put("ccname3","沥青路面");
-                    map4.put("ccname4","钻芯法");
-                    map4.put("fbgc","路面面层");
-                    map4.put("合格率",(hdjcds2 != 0) ? df.format(hdhgds2/hdjcds2*100) : "0");
-                    listhdzxf.add(map1);
-                    listhdzxf.add(map2);
-                    listhdzxf.add(map3);
-                    listhdzxf.add(map4);
-                    resultlist.addAll(listhdzxf);
-                    break;
                 case "23混凝土路面厚度-钻芯法.xlsx":
                     List<Map<String, Object>> list4 = jjgFbgcLmgcHntlmhdzxfService.lookJdbjg(commonInfoVo);
                     List<Map<String, Object>> resulthdzxf = new ArrayList<>();
@@ -1471,7 +1644,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
                     resultlist.addAll(resulthp);
                     break;
                 case "20路面构造深度.xlsx":
-                    List<Map<String, Object>> list6 = jjgZdhGzsdService.lookJdbjg(commonInfoVo);
+                    List<Map<String, Object>> list6 = jjgZdhGzsdService.lookJdbjg(commonInfoVo, flag);
                     List<Map<String, Object>> resultgzsd = new ArrayList<>();
                     double lmzds = 0;
                     double lmhgs = 0;
@@ -1485,73 +1658,123 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
                     boolean aa = false;
                     boolean bb = false;
                     boolean cc = false;
-                    for (Map<String, Object> map : list6) {
-                        if (map.get("路面类型").toString().contains("路面")){
-                            lmzds += Double.valueOf(map.get("总点数").toString());
-                            lmhgs += Double.valueOf(map.get("合格点数").toString());
-                            lmsjz = map.get("设计值").toString();
-                            aa = true;
+                    if(flag == 1){
+                        for (Map<String, Object> map : list6) {
+                            if (map.get("路面类型").toString().contains("路面")){
+                                lmzds += Double.valueOf(map.get("总点数").toString());
+                                lmhgs += Double.valueOf(map.get("合格点数").toString());
+                                lmsjz = map.get("设计值").toString();
+                                aa = true;
+                            }
+                            if (map.get("路面类型").toString().contains("隧道")){
+                                sdzds += Double.valueOf(map.get("总点数").toString());
+                                sdhgd += Double.valueOf(map.get("合格点数").toString());
+                                sdsjz = map.get("设计值").toString();
+                                bb =true;
+                            }
+                            if (map.get("路面类型").toString().contains("桥")){
+                                qzds += Double.valueOf(map.get("总点数").toString());
+                                qhgds += Double.valueOf(map.get("合格点数").toString());
+                                qsjz = map.get("设计值").toString();
+                                cc = true;
+                            }
                         }
-                        if (map.get("路面类型").toString().contains("隧道")){
-                            sdzds += Double.valueOf(map.get("总点数").toString());
-                            sdhgd += Double.valueOf(map.get("合格点数").toString());
-                            sdsjz = map.get("设计值").toString();
-                            bb =true;
+                        if (aa){
+                            Map<String, Object> map = new HashMap<>();
+                            map.put("filename","详见《沥青路面构造深度质量鉴定表》检测"+decf.format(lmzds)+"点,合格"+decf.format(lmhgs)+"点");
+                            map.put("ccname", "构造深度");
+                            map.put("ccname2", "路面面层");
+                            map.put("ccname3", "沥青路面");
+                            map.put("yxps", lmsjz);
+                            map.put("sheetname", "分部-路面");
+                            map.put("fbgc", "路面面层");
+                            map.put("检测点数", decf.format(lmzds));
+                            map.put("合格点数", decf.format(lmhgs));
+                            map.put("合格率", (lmhgs != 0) ? df.format(lmhgs/lmzds*100) : "0");
+                            resultgzsd.add(map);
                         }
-                        if (map.get("路面类型").toString().contains("桥")){
-                            qzds += Double.valueOf(map.get("总点数").toString());
-                            qhgds += Double.valueOf(map.get("合格点数").toString());
-                            qsjz = map.get("设计值").toString();
-                            cc = true;
+                        if (bb){
+                            Map<String, Object> map = new HashMap<>();
+                            map.put("filename","详见《隧道路面构造深度质量鉴定表》检测"+decf.format(sdzds)+"点,合格"+decf.format(sdhgd)+"点");
+                            map.put("ccname", "构造深度");
+                            map.put("ccname2", "隧道路面");
+                            map.put("ccname3", "沥青路面");
+                            map.put("yxps", sdsjz);
+                            map.put("sheetname", "分部-路面");
+                            map.put("fbgc", "路面面层");
+                            map.put("检测点数", decf.format(sdzds));
+                            map.put("合格点数", decf.format(sdhgd));
+                            map.put("合格率", (sdhgd != 0) ? df.format(sdhgd/sdzds*100) : "0");
+                            resultgzsd.add(map);
+                        }
+                        if (cc){
+                            Map<String, Object> map = new HashMap<>();
+                            map.put("filename","详见《桥面系构造深度质量鉴定表》检测"+decf.format(qzds)+"点,合格"+decf.format(qhgds)+"点");
+                            map.put("ccname", "构造深度");
+                            map.put("ccname2", "桥面系");
+                            map.put("ccname3", "沥青路面");
+                            map.put("yxps", qsjz);
+                            map.put("sheetname", "分部-路面");
+                            map.put("fbgc", "路面面层");
+                            map.put("检测点数", decf.format(qzds));
+                            map.put("合格点数", decf.format(qhgds));
+                            map.put("合格率", (qhgds != 0) ? df.format(qhgds/qzds*100) : "0");
+                            resultgzsd.add(map);
+                        }
+                    }else if(flag == 2){
+                        list6 = processJgMap(list6); // 复用的处理方法，所以导致路面的最大最小值没有，但是没有关系，暂时用不上
+                        for(Map<String, Object> map1 : list6){
+                            // 初始化
+                            lmzds = 0;
+                            lmhgs = 0;
+                            lmsjz = "";
+
+                            lmzds = Double.valueOf(map1.get("总点数").toString());
+                            lmhgs = Double.valueOf(map1.get("合格点数").toString());
+                            lmsjz = map1.get("设计值").toString();
+
+                            // 填写数据
+                            Map<String, Object> map = new HashMap<>();
+                            // 分情况
+                            if (map1.get("路面类型").toString().contains("路面")){
+                                if(map1.get("检测项目").toString().contains("连接线")) {
+                                    map.put("filename","详见《连接线沥青路面构造深度质量鉴定表》检测"+decf.format(lmzds)+"点,合格"+decf.format(lmhgs)+"点");
+                                    map.put("ccname", "构造深度（连接线）");
+                                }else {
+                                    map.put("filename","详见《沥青路面构造深度质量鉴定表》检测"+decf.format(lmzds)+"点,合格"+decf.format(lmhgs)+"点");
+                                    map.put("ccname", "构造深度");
+                                }
+                                map.put("ccname2", "路面面层");
+                                map.put("sheetname", "分部-路面");
+                            }else if (map1.get("路面类型").toString().contains("隧道")){
+                                map.put("filename","详见《隧道路面构造深度质量鉴定表》检测"+decf.format(lmzds)+"点,合格"+decf.format(lmhgs)+"点");
+                                map.put("ccname", "构造深度");
+                                map.put("ccname2", "隧道路面");
+                                map.put("sheetname", "分部-"+ map1.get("分部工程名称").toString());
+                            }else if (map1.get("路面类型").toString().contains("桥")){
+                                map.put("filename","详见《桥面系构造深度质量鉴定表》检测"+decf.format(lmzds)+"点,合格"+decf.format(lmhgs)+"点");
+                                map.put("ccname", "构造深度");
+                                map.put("ccname2", "桥面系");
+                                map.put("sheetname", "分部-"+ map1.get("分部工程名称").toString());
+                            }
+
+
+
+                            map.put("ccname3", "沥青路面");
+                            map.put("yxps", lmsjz);
+                            map.put("fbgc", "路面面层");
+                            map.put("检测点数", decf.format(lmzds));
+                            map.put("合格点数", decf.format(lmhgs));
+                            map.put("合格率", (lmhgs != 0) ? df.format(lmhgs/lmzds*100) : "0");
+                            resultgzsd.add(map);
                         }
                     }
-                    if (aa){
-                        Map<String, Object> map = new HashMap<>();
-                        map.put("filename","详见《沥青路面构造深度质量鉴定表》检测"+decf.format(lmzds)+"点,合格"+decf.format(lmhgs)+"点");
-                        map.put("ccname", "构造深度");
-                        map.put("ccname2", "路面面层");
-                        map.put("ccname3", "沥青路面");
-                        map.put("yxps", lmsjz);
-                        map.put("sheetname", "分部-路面");
-                        map.put("fbgc", "路面面层");
-                        map.put("检测点数", decf.format(lmzds));
-                        map.put("合格点数", decf.format(lmhgs));
-                        map.put("合格率", (lmhgs != 0) ? df.format(lmhgs/lmzds*100) : "0");
-                        resultgzsd.add(map);
-                    }
-                    if (bb){
-                        Map<String, Object> map = new HashMap<>();
-                        map.put("filename","详见《隧道路面构造深度质量鉴定表》检测"+decf.format(sdzds)+"点,合格"+decf.format(sdhgd)+"点");
-                        map.put("ccname", "构造深度");
-                        map.put("ccname2", "隧道路面");
-                        map.put("ccname3", "沥青路面");
-                        map.put("yxps", sdsjz);
-                        map.put("sheetname", "分部-路面");
-                        map.put("fbgc", "路面面层");
-                        map.put("检测点数", decf.format(sdzds));
-                        map.put("合格点数", decf.format(sdhgd));
-                        map.put("合格率", (sdhgd != 0) ? df.format(sdhgd/sdzds*100) : "0");
-                        resultgzsd.add(map);
-                    }
-                    if (cc){
-                        Map<String, Object> map = new HashMap<>();
-                        map.put("filename","详见《桥面系构造深度质量鉴定表》检测"+decf.format(qzds)+"点,合格"+decf.format(qhgds)+"点");
-                        map.put("ccname", "构造深度");
-                        map.put("ccname2", "桥面系");
-                        map.put("ccname3", "沥青路面");
-                        map.put("yxps", qsjz);
-                        map.put("sheetname", "分部-路面");
-                        map.put("fbgc", "路面面层");
-                        map.put("检测点数", decf.format(qzds));
-                        map.put("合格点数", decf.format(qhgds));
-                        map.put("合格率", (qhgds != 0) ? df.format(qhgds/qzds*100) : "0");
-                        resultgzsd.add(map);
-                    }
+
                     resultlist.addAll(resultgzsd);
                     break;
                 case "19路面摩擦系数.xlsx":
                     //分工作簿
-                    List<Map<String, Object>> list7 = jjgZdhMcxsService.lookJdbjg(commonInfoVo);
+                    List<Map<String, Object>> list7 = jjgZdhMcxsService.lookJdbjg(commonInfoVo, flag);
                     List<Map<String, Object>> resultmcxs = new ArrayList<>();
                     double lmzds2 = 0;
                     double lmhgs2 = 0;
@@ -1565,72 +1788,123 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
                     boolean aaa = false;
                     boolean bbb = false;
                     boolean ccc = false;
-                    for (Map<String, Object> map : list7) {
-                        if (map.get("路面类型").toString().contains("路面")){
-                            lmzds2 += Double.valueOf(map.get("总点数").toString());
-                            lmhgs2 += Double.valueOf(map.get("合格点数").toString());
-                            lmsjz2 = map.get("设计值").toString();
-                            aaa = true;
+                    if(flag == 1){
+                        for (Map<String, Object> map : list7) {
+                            if (map.get("路面类型").toString().contains("路面")){
+                                lmzds2 += Double.valueOf(map.get("总点数").toString());
+                                lmhgs2 += Double.valueOf(map.get("合格点数").toString());
+                                lmsjz2 = map.get("设计值").toString();
+                                aaa = true;
+                            }
+                            if (map.get("路面类型").toString().contains("隧道")){
+                                sdzds2 += Double.valueOf(map.get("总点数").toString());
+                                sdhgd2 += Double.valueOf(map.get("合格点数").toString());
+                                sdsjz2 = map.get("设计值").toString();
+                                bbb =true;
+                            }
+                            if (map.get("路面类型").toString().contains("桥")){
+                                qzds2 += Double.valueOf(map.get("总点数").toString());
+                                qhgds2 += Double.valueOf(map.get("合格点数").toString());
+                                qsjz2 = map.get("设计值").toString();
+                                ccc = true;
+                            }
                         }
-                        if (map.get("路面类型").toString().contains("隧道")){
-                            sdzds2 += Double.valueOf(map.get("总点数").toString());
-                            sdhgd2 += Double.valueOf(map.get("合格点数").toString());
-                            sdsjz2 = map.get("设计值").toString();
-                            bbb =true;
+                        if (aaa){
+                            Map<String, Object> map = new HashMap<>();
+                            map.put("filename","详见《沥青路面摩擦系数质量鉴定表》检测"+decf.format(lmzds2)+"点,合格"+decf.format(lmhgs2)+"点");
+                            map.put("ccname", "摩擦系数");
+                            map.put("ccname2", "路面面层");
+                            map.put("ccname3", "沥青路面");
+                            map.put("yxps", lmsjz2);
+                            map.put("sheetname", "分部-路面");
+                            map.put("fbgc", "路面面层");
+                            map.put("检测点数", decf.format(lmzds2));
+                            map.put("合格点数", decf.format(lmhgs2));
+                            map.put("合格率", (lmhgs2 != 0) ? df.format(lmhgs2/lmzds2*100) : "0");
+                            resultmcxs.add(map);
                         }
-                        if (map.get("路面类型").toString().contains("桥")){
-                            qzds2 += Double.valueOf(map.get("总点数").toString());
-                            qhgds2 += Double.valueOf(map.get("合格点数").toString());
-                            qsjz2 = map.get("设计值").toString();
-                            ccc = true;
+                        if (bbb){
+                            Map<String, Object> map = new HashMap<>();
+                            map.put("filename","详见《隧道路面摩擦系数质量鉴定表》检测"+decf.format(sdzds2)+"点,合格"+decf.format(sdhgd2)+"点");
+                            map.put("ccname", "摩擦系数");
+                            map.put("ccname2", "隧道路面");
+                            map.put("ccname3", "沥青路面");
+                            map.put("yxps", sdsjz2);
+                            map.put("sheetname", "分部-路面");
+                            map.put("fbgc", "路面面层");
+                            map.put("检测点数", decf.format(sdzds2));
+                            map.put("合格点数", decf.format(sdhgd2));
+                            map.put("合格率", (sdhgd2 != 0) ? df.format(sdhgd2/sdzds2*100) : "0");
+                            resultmcxs.add(map);
+                        }
+                        if (ccc){
+                            Map<String, Object> map = new HashMap<>();
+                            map.put("filename","详见《桥面系摩擦系数质量鉴定表》检测"+decf.format(qzds2)+"点,合格"+decf.format(qhgds2)+"点");
+                            map.put("ccname", "摩擦系数");
+                            map.put("ccname2", "桥面系");
+                            map.put("ccname3", "沥青路面");
+                            map.put("yxps", qsjz2);
+                            map.put("sheetname", "分部-路面");
+                            map.put("fbgc", "路面面层");
+                            map.put("检测点数", decf.format(qzds2));
+                            map.put("合格点数", decf.format(qhgds2));
+                            map.put("合格率", (qhgds2 != 0) ? df.format(qhgds2/qzds2*100) : "0");
+                            resultmcxs.add(map);
+                        }
+                    }else if(flag == 2){
+                        // 对list7进行分组，根据路面类型分组
+                        list7 = processJgMap(list7);
+                        for(Map<String, Object> map1 : list7){
+                            // 初始化
+                            lmzds2 = 0;
+                            lmhgs2 = 0;
+                            lmsjz2 = "";
+
+                            lmzds2 = Double.valueOf(map1.get("总点数").toString());
+                            lmhgs2 = Double.valueOf(map1.get("合格点数").toString());
+                            lmsjz2 = map1.get("设计值").toString();
+
+                            // 填写数据
+                            Map<String, Object> map = new HashMap<>();
+                            // 分情况
+                            if (map1.get("路面类型").toString().contains("路面")){
+                                if(map1.get("检测项目").toString().contains("连接线")) {
+                                    map.put("filename","详见《沥青路面连接线摩擦系数质量鉴定表》检测"+decf.format(lmzds2)+"点,合格"+decf.format(lmhgs2)+"点");
+                                    map.put("ccname", "摩擦系数(连接线)");
+                                }else {
+                                    map.put("filename","详见《沥青路面摩擦系数质量鉴定表》检测"+decf.format(lmzds2)+"点,合格"+decf.format(lmhgs2)+"点");
+                                    map.put("ccname", "摩擦系数");
+                                }
+                                map.put("ccname2", "路面面层");
+                                map.put("sheetname", "分部-路面");
+                            }else if (map1.get("路面类型").toString().contains("隧道")){
+                                map.put("filename","详见《隧道路面摩擦系数质量鉴定表》检测"+decf.format(lmzds2)+"点,合格"+decf.format(lmhgs2)+"点");
+                                map.put("ccname", "摩擦系数");
+                                map.put("ccname2", "隧道路面");
+                                map.put("sheetname", "分部-"+ map1.get("分部工程名称").toString());
+                            }else if (map1.get("路面类型").toString().contains("桥")){
+                                map.put("filename","详见《桥面系摩擦系数质量鉴定表》检测"+decf.format(lmzds2)+"点,合格"+decf.format(lmhgs2)+"点");
+                                map.put("ccname", "摩擦系数");
+                                map.put("ccname2", "桥面系");
+                                map.put("sheetname", "分部-"+ map1.get("分部工程名称").toString());
+                            }
+
+
+
+                            map.put("ccname3", "沥青路面");
+                            map.put("yxps", lmsjz2);
+                            map.put("fbgc", "路面面层");
+                            map.put("检测点数", decf.format(lmzds2));
+                            map.put("合格点数", decf.format(lmhgs2));
+                            map.put("合格率", (lmhgs2 != 0) ? df.format(lmhgs2/lmzds2*100) : "0");
+                            resultmcxs.add(map);
                         }
                     }
-                    if (aaa){
-                        Map<String, Object> map = new HashMap<>();
-                        map.put("filename","详见《沥青路面摩擦系数质量鉴定表》检测"+decf.format(lmzds2)+"点,合格"+decf.format(lmhgs2)+"点");
-                        map.put("ccname", "摩擦系数");
-                        map.put("ccname2", "路面面层");
-                        map.put("ccname3", "沥青路面");
-                        map.put("yxps", lmsjz2);
-                        map.put("sheetname", "分部-路面");
-                        map.put("fbgc", "路面面层");
-                        map.put("检测点数", decf.format(lmzds2));
-                        map.put("合格点数", decf.format(lmhgs2));
-                        map.put("合格率", (lmhgs2 != 0) ? df.format(lmhgs2/lmzds2*100) : "0");
-                        resultmcxs.add(map);
-                    }
-                    if (bbb){
-                        Map<String, Object> map = new HashMap<>();
-                        map.put("filename","详见《隧道路面摩擦系数质量鉴定表》检测"+decf.format(sdzds2)+"点,合格"+decf.format(sdhgd2)+"点");
-                        map.put("ccname", "摩擦系数");
-                        map.put("ccname2", "隧道路面");
-                        map.put("ccname3", "沥青路面");
-                        map.put("yxps", sdsjz2);
-                        map.put("sheetname", "分部-路面");
-                        map.put("fbgc", "路面面层");
-                        map.put("检测点数", decf.format(sdzds2));
-                        map.put("合格点数", decf.format(sdhgd2));
-                        map.put("合格率", (sdhgd2 != 0) ? df.format(sdhgd2/sdzds2*100) : "0");
-                        resultmcxs.add(map);
-                    }
-                    if (ccc){
-                        Map<String, Object> map = new HashMap<>();
-                        map.put("filename","详见《桥面系摩擦系数质量鉴定表》检测"+decf.format(qzds2)+"点,合格"+decf.format(qhgds2)+"点");
-                        map.put("ccname", "摩擦系数");
-                        map.put("ccname2", "桥面系");
-                        map.put("ccname3", "沥青路面");
-                        map.put("yxps", qsjz2);
-                        map.put("sheetname", "分部-路面");
-                        map.put("fbgc", "路面面层");
-                        map.put("检测点数", decf.format(qzds2));
-                        map.put("合格点数", decf.format(qhgds2));
-                        map.put("合格率", (qhgds2 != 0) ? df.format(qhgds2/qzds2*100) : "0");
-                        resultmcxs.add(map);
-                    }
+
                     resultlist.addAll(resultmcxs);
                     break;
                 case "18路面平整度.xlsx":
-                    List<Map<String, Object>> list8 = jjgZdhPzdService.lookJdbjg(commonInfoVo);
+                    List<Map<String, Object>> list8 = jjgZdhPzdService.lookJdbjg(commonInfoVo, flag);
                     List<Map<String, Object>> resultpzd = new ArrayList<>();
                     double lmzds3 = 0;
                     double lmhgs3 = 0;
@@ -1644,68 +1918,142 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
                     boolean aaaa = false;
                     boolean bbbb = false;
                     boolean cccc = false;
-                    for (Map<String, Object> map : list8) {
-                        if (map.get("路面类型").toString().equals("沥青路面") || map.get("路面类型").toString().equals("沥青匝道")){
-                            lmzds3 += Double.valueOf(map.get("总点数").toString());
-                            lmhgs3 += Double.valueOf(map.get("合格点数").toString());
-                            lmsjz3 = map.get("设计值").toString();
-                            aaaa = true;
+                    if(flag == 1){
+                        for (Map<String, Object> map : list8) {
+                            if (map.get("路面类型").toString().equals("沥青路面") || map.get("路面类型").toString().equals("沥青匝道")){
+                                lmzds3 += Double.valueOf(map.get("总点数").toString());
+                                lmhgs3 += Double.valueOf(map.get("合格点数").toString());
+                                lmsjz3 = map.get("设计值").toString();
+                                aaaa = true;
+                            }
+                            if (map.get("路面类型").toString().contains("隧道")){
+                                sdzds3 += Double.valueOf(map.get("总点数").toString());
+                                sdhgd3 += Double.valueOf(map.get("合格点数").toString());
+                                sdsjz3 = map.get("设计值").toString();
+                                bbbb =true;
+                            }
+                            if (map.get("路面类型").toString().contains("桥")){
+                                qzds3 += Double.valueOf(map.get("总点数").toString());
+                                qhgds3 += Double.valueOf(map.get("合格点数").toString());
+                                qsjz3 = map.get("设计值").toString();
+                                cccc = true;
+                            }
                         }
-                        if (map.get("路面类型").toString().contains("隧道")){
-                            sdzds3 += Double.valueOf(map.get("总点数").toString());
-                            sdhgd3 += Double.valueOf(map.get("合格点数").toString());
-                            sdsjz3 = map.get("设计值").toString();
-                            bbbb =true;
+                        if (aaaa){
+                            Map<String, Object> map = new HashMap<>();
+                            map.put("filename","详见《沥青路面平整度质量鉴定表》检测"+decf.format(lmzds3)+"点,合格"+decf.format(lmhgs3)+"点");
+                            map.put("ccname", "平整度");
+                            map.put("ccname2", "路面面层");
+                            map.put("ccname3", "沥青路面");
+                            map.put("yxps", lmsjz3);
+                            map.put("sheetname", "分部-路面");
+                            map.put("fbgc", "路面面层");
+                            map.put("检测点数", decf.format(lmzds3));
+                            map.put("合格点数", decf.format(lmhgs3));
+                            map.put("合格率", (lmhgs3 != 0) ? df.format(lmhgs3/lmzds3*100) : "0");
+                            resultpzd.add(map);
                         }
-                        if (map.get("路面类型").toString().contains("桥")){
-                            qzds3 += Double.valueOf(map.get("总点数").toString());
-                            qhgds3 += Double.valueOf(map.get("合格点数").toString());
-                            qsjz3 = map.get("设计值").toString();
-                            cccc = true;
+                        if (bbbb){
+                            Map<String, Object> map = new HashMap<>();
+                            map.put("filename","详见《隧道路面平整度质量鉴定表》检测"+decf.format(sdzds3)+"点,合格"+decf.format(sdhgd3)+"点");
+                            map.put("ccname", "平整度");
+                            map.put("ccname2", "隧道路面");
+                            map.put("ccname3", "沥青路面");
+                            map.put("yxps", sdsjz3);
+                            map.put("sheetname", "分部-路面");
+                            map.put("fbgc", "路面面层");
+                            map.put("检测点数", decf.format(sdzds3));
+                            map.put("合格点数", decf.format(sdhgd3));
+                            map.put("合格率", (sdhgd3 != 0) ? df.format(sdhgd3/sdzds3*100) : "0");
+                            resultpzd.add(map);
+                        }
+                        if (cccc){
+                            Map<String, Object> map = new HashMap<>();
+                            map.put("filename","详见《桥面系平整度质量鉴定表》检测"+decf.format(qzds3)+"点,合格"+decf.format(qhgds3)+"点");
+                            map.put("ccname", "平整度");
+                            map.put("ccname2", "桥面系");
+                            map.put("ccname3", "沥青路面");
+                            map.put("yxps", qsjz3);
+                            map.put("sheetname", "分部-路面");
+                            map.put("fbgc", "路面面层");
+                            map.put("检测点数", decf.format(qzds3));
+                            map.put("合格点数", decf.format(qhgds3));
+                            map.put("合格率", (qhgds3 != 0) ? df.format(qhgds3/qzds3*100) : "0");
+                            resultpzd.add(map);
+                        }
+                    }else if(flag == 2){
+                        // 先进行组合
+                        list8 = processPZDList(list8);
+                        for (Map<String, Object> map8 : list8) {
+                            lmzds3 = 0;
+                            lmhgs3 = 0;
+
+
+
+                            lmzds3 += Double.valueOf(map8.get("总点数").toString());
+                            lmhgs3 += Double.valueOf(map8.get("合格点数").toString());
+                            lmsjz3 = map8.get("设计值").toString();
+
+                            Map<String, Object> map = new HashMap<>();
+
+
+                            if (map8.get("路面类型").toString().equals("沥青路面")){
+
+                                if(map8.get("检测项目").toString().contains("连接线")) {
+                                    map.put("filename","详见《连接线路面平整度质量鉴定表》检测"+decf.format(lmzds3)+"点,合格"+decf.format(lmhgs3)+"点");
+                                    map.put("ccname", "平整度（连接线）");
+                                }
+                                else {
+                                    map.put("filename","详见《沥青路面平整度质量鉴定表》检测"+decf.format(lmzds3)+"点,合格"+decf.format(lmhgs3)+"点");
+                                    map.put("ccname", "平整度");
+                                }
+                                map.put("ccname2", "路面面层");
+                                map.put("ccname3", "沥青路面");
+                                map.put("sheetname", "分部-路面");
+                            }else if (map8.get("路面类型").toString().contains("隧道")){
+                                if(map8.get("检测项目").toString().contains("连接线")) {
+                                    map.put("filename","详见《连接线隧道平整度质量鉴定表》检测"+decf.format(lmzds3)+"点,合格"+decf.format(lmhgs3)+"点");
+                                    map.put("ccname", "平整度（连接线）");
+                                }
+                                else {
+                                    map.put("filename","详见《隧道路面平整度质量鉴定表》检测"+decf.format(lmzds3)+"点,合格"+decf.format(lmhgs3)+"点");
+                                    map.put("ccname", "平整度");
+                                }
+                                map.put("ccname2", "隧道路面");
+                                map.put("ccname3", "沥青路面");
+                                map.put("sheetname", "分部-" + map8.get("分部工程名称").toString());
+                            }else if (map8.get("路面类型").toString().contains("桥")){
+                                if(map8.get("检测项目").toString().contains("连接线")) {
+                                    map.put("filename","详见《连接线桥面系平整度质量鉴定表》检测"+decf.format(lmzds3)+"点,合格"+decf.format(lmhgs3)+"点");
+                                    map.put("ccname", "平整度（连接线）");
+                                }
+                                else {
+                                    map.put("filename","详见《桥面系平整度质量鉴定表》检测"+decf.format(lmzds3)+"点,合格"+decf.format(lmhgs3)+"点");
+                                    map.put("ccname", "平整度");
+                                }
+                                map.put("ccname2", "桥面系");
+                                map.put("ccname3", "沥青路面");
+                                map.put("sheetname", "分部-" + map8.get("分部工程名称").toString());
+                            }else if (map8.get("路面类型").toString().contains("收费站")){ // 该情况下只有收费站有混凝土
+
+                                map.put("filename","详见《混凝土路面平整度质量鉴定表》检测"+decf.format(lmzds3)+"点,合格"+decf.format(lmhgs3)+"点");
+                                map.put("ccname", "平整度");
+
+                                map.put("ccname2", "路面面层");
+                                map.put("ccname3", "混凝土路面");
+                                map.put("sheetname", "分部-路面");
+                            }
+
+
+                            map.put("yxps", lmsjz3);
+                            map.put("fbgc", "路面面层");
+                            map.put("检测点数", decf.format(lmzds3));
+                            map.put("合格点数", decf.format(lmhgs3));
+                            map.put("合格率", (lmhgs3 != 0) ? df.format(lmhgs3/lmzds3*100) : "0");
+                            resultpzd.add(map);
                         }
                     }
-                    if (aaaa){
-                        Map<String, Object> map = new HashMap<>();
-                        map.put("filename","详见《沥青路面平整度质量鉴定表》检测"+decf.format(lmzds3)+"点,合格"+decf.format(lmhgs3)+"点");
-                        map.put("ccname", "平整度");
-                        map.put("ccname2", "路面面层");
-                        map.put("ccname3", "沥青路面");
-                        map.put("yxps", lmsjz3);
-                        map.put("sheetname", "分部-路面");
-                        map.put("fbgc", "路面面层");
-                        map.put("检测点数", decf.format(lmzds3));
-                        map.put("合格点数", decf.format(lmhgs3));
-                        map.put("合格率", (lmhgs3 != 0) ? df.format(lmhgs3/lmzds3*100) : "0");
-                        resultpzd.add(map);
-                    }
-                    if (bbbb){
-                        Map<String, Object> map = new HashMap<>();
-                        map.put("filename","详见《隧道路面平整度质量鉴定表》检测"+decf.format(sdzds3)+"点,合格"+decf.format(sdhgd3)+"点");
-                        map.put("ccname", "平整度");
-                        map.put("ccname2", "隧道路面");
-                        map.put("ccname3", "沥青路面");
-                        map.put("yxps", sdsjz3);
-                        map.put("sheetname", "分部-路面");
-                        map.put("fbgc", "路面面层");
-                        map.put("检测点数", decf.format(sdzds3));
-                        map.put("合格点数", decf.format(sdhgd3));
-                        map.put("合格率", (sdhgd3 != 0) ? df.format(sdhgd3/sdzds3*100) : "0");
-                        resultpzd.add(map);
-                    }
-                    if (cccc){
-                        Map<String, Object> map = new HashMap<>();
-                        map.put("filename","详见《桥面系平整度质量鉴定表》检测"+decf.format(qzds3)+"点,合格"+decf.format(qhgds3)+"点");
-                        map.put("ccname", "平整度");
-                        map.put("ccname2", "桥面系");
-                        map.put("ccname3", "沥青路面");
-                        map.put("yxps", qsjz3);
-                        map.put("sheetname", "分部-路面");
-                        map.put("fbgc", "路面面层");
-                        map.put("检测点数", decf.format(qzds3));
-                        map.put("合格点数", decf.format(qhgds3));
-                        map.put("合格率", (qhgds3 != 0) ? df.format(qhgds3/qzds3*100) : "0");
-                        resultpzd.add(map);
-                    }
+
                     resultlist.addAll(resultpzd);
 
                     break;
@@ -1951,7 +2299,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
 
                     break;
                 case "14路面车辙.xlsx":
-                    List<Map<String, Object>> list10 = jjgZdhCzService.lookJdbjg(commonInfoVo);
+                    List<Map<String, Object>> list10 = jjgZdhCzService.lookJdbjg(commonInfoVo, flag);
                     List<Map<String, Object>> resultcz = new ArrayList<>();
                     double lmzds5 = 0;
                     double lmhgs5 = 0;
@@ -1965,68 +2313,153 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
                     boolean aaaaa = false;
                     boolean bbbbb = false;
                     boolean ccccc = false;
-                    for (Map<String, Object> map : list10) {
-                        if (map.get("路面类型").toString().contains("路面")){
-                            lmzds5 += Double.valueOf(map.get("总点数").toString());
-                            lmhgs5 += Double.valueOf(map.get("合格点数").toString());
-                            lmsjz5 = map.get("设计值").toString();
-                            aaaaa = true;
+
+                    if (flag == 1){
+                        for (Map<String, Object> map : list10) {
+                            if (map.get("路面类型").toString().contains("路面")){
+                                lmzds5 += Double.valueOf(map.get("总点数").toString());
+                                lmhgs5 += Double.valueOf(map.get("合格点数").toString());
+                                lmsjz5 = map.get("设计值").toString();
+                                aaaaa = true;
+                            }
+                            if (map.get("路面类型").toString().contains("隧道")){
+                                sdzds5 += Double.valueOf(map.get("总点数").toString());
+                                sdhgd5 += Double.valueOf(map.get("合格点数").toString());
+                                sdsjz5 = map.get("设计值").toString();
+                                bbbbb =true;
+                            }
+                            if (map.get("路面类型").toString().contains("桥")){
+                                qzds5 += Double.valueOf(map.get("总点数").toString());
+                                qhgds5 += Double.valueOf(map.get("合格点数").toString());
+                                qsjz5 = map.get("设计值").toString();
+                                ccccc = true;
+                            }
                         }
-                        if (map.get("路面类型").toString().contains("隧道")){
-                            sdzds5 += Double.valueOf(map.get("总点数").toString());
-                            sdhgd5 += Double.valueOf(map.get("合格点数").toString());
-                            sdsjz5 = map.get("设计值").toString();
-                            bbbbb =true;
+                        if (aaaaa){
+                            Map<String, Object> map = new HashMap<>();
+                            map.put("filename","详见《沥青路面车辙质量鉴定表》检测"+decf.format(lmzds5)+"点,合格"+decf.format(lmhgs5)+"点");
+                            map.put("ccname", "车辙");
+                            map.put("ccname2", "路面面层");
+                            map.put("ccname3", "沥青路面");
+                            map.put("yxps", lmsjz5);
+                            map.put("sheetname", "分部-路面");
+                            map.put("fbgc", "路面面层");
+                            map.put("检测点数", decf.format(lmzds5));
+                            map.put("合格点数", decf.format(lmhgs5));
+                            map.put("合格率", (lmhgs5 != 0) ? df.format(lmhgs5/lmzds5*100) : "0");
+                            resultcz.add(map);
                         }
-                        if (map.get("路面类型").toString().contains("桥")){
-                            qzds5 += Double.valueOf(map.get("总点数").toString());
-                            qhgds5 += Double.valueOf(map.get("合格点数").toString());
-                            qsjz5 = map.get("设计值").toString();
-                            ccccc = true;
+                        if (bbbbb){
+                            Map<String, Object> map = new HashMap<>();
+                            map.put("filename","详见《隧道路面车辙质量鉴定表》检测"+decf.format(sdzds5)+"点,合格"+decf.format(sdhgd5)+"点");
+                            map.put("ccname", "车辙");
+                            map.put("ccname2", "隧道路面");
+                            map.put("ccname3", "沥青路面");
+                            map.put("yxps", sdsjz5);
+                            map.put("sheetname", "分部-路面");
+                            map.put("fbgc", "路面面层");
+                            map.put("检测点数", decf.format(sdzds5));
+                            map.put("合格点数", decf.format(sdhgd5));
+                            map.put("合格率", (sdhgd5 != 0) ? df.format(sdhgd5/sdzds5*100) : "0");
+                            resultcz.add(map);
                         }
+                        if (ccccc){
+                            Map<String, Object> map = new HashMap<>();
+                            map.put("filename","详见《桥面系车辙质量鉴定表》检测"+decf.format(qzds5)+"点,合格"+decf.format(qhgds5)+"点");
+                            map.put("ccname", "车辙");
+                            map.put("ccname2", "桥面系");
+                            map.put("ccname3", "沥青路面");
+                            map.put("yxps", qsjz5);
+                            map.put("sheetname", "分部-路面");
+                            map.put("fbgc", "路面面层");
+                            map.put("检测点数", decf.format(qzds5));
+                            map.put("合格点数", decf.format(qhgds5));
+                            map.put("合格率", (qhgds5 != 0) ? df.format(qhgds5/qzds5*100) : "0");
+                            resultcz.add(map);
+                        }
+                    }else if (flag == 2){
+                        // 对List10先进行组合，按照要求把需要合在一起的合在一起
+                        list10 = processJgMap(list10);
+                        for (Map<String, Object> mapf : list10) {
+                            lmzds5 = 0;
+                            lmhgs5 = 0;
+                            lmsjz5 = "";
+                            sdzds5 = 0;
+                            sdhgd5 = 0;
+                            sdsjz5 = "";
+                            qzds5 = 0;
+                            qhgds5 = 0;
+                            qsjz5 = "";
+                            aaaaa = false;
+                            bbbbb = false;
+                            ccccc = false;
+                            if (mapf.get("路面类型").toString().contains("路面")){
+                                lmzds5 += Double.valueOf(mapf.get("总点数").toString());
+                                lmhgs5 += Double.valueOf(mapf.get("合格点数").toString());
+                                lmsjz5 = mapf.get("设计值").toString();
+
+                                Map<String, Object> map = new HashMap<>();
+
+                                map.put("ccname2", "路面面层");
+                                map.put("ccname3", "沥青路面");
+                                map.put("yxps", lmsjz5);
+                                map.put("sheetname", "分部-路面");
+                                map.put("fbgc", "路面面层");
+                                map.put("检测点数", decf.format(lmzds5));
+                                map.put("合格点数", decf.format(lmhgs5));
+                                map.put("合格率", (lmhgs5 != 0) ? df.format(lmhgs5/lmzds5*100) : "0");
+
+                                if(mapf.get("检测项目").toString().contains("连接线")){
+                                    map.put("filename","详见《沥青路面连接线车辙质量鉴定表》检测"+decf.format(lmzds5)+"点,合格"+decf.format(lmhgs5)+"点");
+                                    map.put("ccname", "车辙（连接线）");
+                                }else{
+                                    map.put("filename","详见《沥青路面车辙质量鉴定表》检测"+decf.format(lmzds5)+"点,合格"+decf.format(lmhgs5)+"点");
+                                    map.put("ccname", "车辙");
+                                }
+                                resultcz.add(map);
+
+                            }
+                            if (mapf.get("路面类型").toString().contains("隧道")){
+                                sdzds5 += Double.valueOf(mapf.get("总点数").toString());
+                                sdhgd5 += Double.valueOf(mapf.get("合格点数").toString());
+                                sdsjz5 = mapf.get("设计值").toString();
+
+                                Map<String, Object> map = new HashMap<>();
+                                map.put("filename","详见《隧道路面车辙质量鉴定表》检测"+decf.format(sdzds5)+"点,合格"+decf.format(sdhgd5)+"点");
+                                map.put("ccname", "车辙");
+                                map.put("ccname2", "隧道路面");
+                                map.put("ccname3", "沥青路面");
+                                map.put("yxps", sdsjz5);
+                                map.put("sheetname", "分部-" + mapf.get("分部工程名称").toString());
+                                map.put("fbgc", "路面面层");
+                                map.put("检测点数", decf.format(sdzds5));
+                                map.put("合格点数", decf.format(sdhgd5));
+                                map.put("合格率", (sdhgd5 != 0) ? df.format(sdhgd5/sdzds5*100) : "0");
+                                resultcz.add(map);
+                            }
+                            if (mapf.get("路面类型").toString().contains("桥")){
+                                qzds5 += Double.valueOf(mapf.get("总点数").toString());
+                                qhgds5 += Double.valueOf(mapf.get("合格点数").toString());
+                                qsjz5 = mapf.get("设计值").toString();
+
+                                Map<String, Object> map = new HashMap<>();
+                                map.put("filename","详见《桥面系车辙质量鉴定表》检测"+decf.format(qzds5)+"点,合格"+decf.format(qhgds5)+"点");
+                                map.put("ccname", "车辙");
+                                map.put("ccname2", "桥面系");
+                                map.put("ccname3", "沥青路面");
+                                map.put("yxps", qsjz5);
+                                map.put("sheetname", "分部-" + mapf.get("分部工程名称").toString());
+                                map.put("fbgc", "路面面层");
+                                map.put("检测点数", decf.format(qzds5));
+                                map.put("合格点数", decf.format(qhgds5));
+                                map.put("合格率", (qhgds5 != 0) ? df.format(qhgds5/qzds5*100) : "0");
+                                resultcz.add(map);
+                            }
+
+                        }
+
                     }
-                    if (aaaaa){
-                        Map<String, Object> map = new HashMap<>();
-                        map.put("filename","详见《沥青路面车辙质量鉴定表》检测"+decf.format(lmzds5)+"点,合格"+decf.format(lmhgs5)+"点");
-                        map.put("ccname", "车辙");
-                        map.put("ccname2", "路面面层");
-                        map.put("ccname3", "沥青路面");
-                        map.put("yxps", lmsjz5);
-                        map.put("sheetname", "分部-路面");
-                        map.put("fbgc", "路面面层");
-                        map.put("检测点数", decf.format(lmzds5));
-                        map.put("合格点数", decf.format(lmhgs5));
-                        map.put("合格率", (lmhgs5 != 0) ? df.format(lmhgs5/lmzds5*100) : "0");
-                        resultcz.add(map);
-                    }
-                    if (bbbbb){
-                        Map<String, Object> map = new HashMap<>();
-                        map.put("filename","详见《隧道路面车辙质量鉴定表》检测"+decf.format(sdzds5)+"点,合格"+decf.format(sdhgd5)+"点");
-                        map.put("ccname", "车辙");
-                        map.put("ccname2", "隧道路面");
-                        map.put("ccname3", "沥青路面");
-                        map.put("yxps", sdsjz5);
-                        map.put("sheetname", "分部-路面");
-                        map.put("fbgc", "路面面层");
-                        map.put("检测点数", decf.format(sdzds5));
-                        map.put("合格点数", decf.format(sdhgd5));
-                        map.put("合格率", (sdhgd5 != 0) ? df.format(sdhgd5/sdzds5*100) : "0");
-                        resultcz.add(map);
-                    }
-                    if (ccccc){
-                        Map<String, Object> map = new HashMap<>();
-                        map.put("filename","详见《桥面系车辙质量鉴定表》检测"+decf.format(qzds5)+"点,合格"+decf.format(qhgds5)+"点");
-                        map.put("ccname", "车辙");
-                        map.put("ccname2", "桥面系");
-                        map.put("ccname3", "沥青路面");
-                        map.put("yxps", qsjz5);
-                        map.put("sheetname", "分部-路面");
-                        map.put("fbgc", "路面面层");
-                        map.put("检测点数", decf.format(qzds5));
-                        map.put("合格点数", decf.format(qhgds5));
-                        map.put("合格率", (qhgds5 != 0) ? df.format(qhgds5/qzds5*100) : "0");
-                        resultcz.add(map);
-                    }
+
                     resultlist.addAll(resultcz);
                     break;
                 case "38隧道衬砌砼强度.xlsx":
@@ -13771,7 +14204,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
         }
         //路面弯沉
         List<Map<String, Object>> list2 = jjgFbgcLmgcLmwcService.lookJdbjg(commonInfoVo);
-        List<Map<String, Object>> listlcf = jjgFbgcLmgcLmwcLcfService.lookJdbjg(commonInfoVo);
+        List<Map<String, Object>> listlcf = jjgFbgcLmgcLmwcLcfService.lookJdbjg(commonInfoVo, 1);
         double wczds = 0;
         double wchgds = 0;
         boolean a =false,b = false;
@@ -13797,7 +14230,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
         }
 
         //车辙
-        List<Map<String, Object>> list3 = jjgZdhCzService.lookJdbjg(commonInfoVo);
+        List<Map<String, Object>> list3 = jjgZdhCzService.lookJdbjg(commonInfoVo, 1);
         if (CollectionUtils.isNotEmpty(list3)){
             double czzds = 0;
             double czhgds = 0;
@@ -13812,7 +14245,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
             resultmap.put("czhgds",decf.format(czhgds));
             resultmap.put("czhgl",czzds!=0 ? df.format(czhgds/czzds*100) : 0);
         }
-        List<Map<String, Object>> list4 = jjgFbgcLmgcLmssxsService.lookJdbjg(commonInfoVo);
+        List<Map<String, Object>> list4 = jjgFbgcLmgcLmssxsService.lookJdbjg(commonInfoVo,1);
         if (CollectionUtils.isNotEmpty(list4)){
             double ssxszds = 0;
             double ssxshgds = 0;
@@ -13824,7 +14257,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
             resultmap.put("ssxshgds",decf.format(ssxshgds));
             resultmap.put("ssxshgl",ssxszds!=0 ? df.format(ssxshgds/ssxszds*100) : 0);
         }
-        List<Map<String, Object>> list5 = jjgZdhPzdService.lookJdbjg(commonInfoVo);
+        List<Map<String, Object>> list5 = jjgZdhPzdService.lookJdbjg(commonInfoVo, 1);
         if (CollectionUtils.isNotEmpty(list5)){
             double lqpzdzds = 0;
             double lqpzdhgds = 0;
@@ -13850,7 +14283,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
         }
 
 
-        List<Map<String, Object>> list6 = jjgZdhMcxsService.lookJdbjg(commonInfoVo);
+        List<Map<String, Object>> list6 = jjgZdhMcxsService.lookJdbjg(commonInfoVo,1);
         if (CollectionUtils.isNotEmpty(list6)){
             double mcxszds = 0;
             double mcxshgds = 0;
@@ -13863,7 +14296,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
             resultmap.put("mcxshgl",mcxszds!=0 ? df.format(mcxshgds/mcxszds*100) : 0);
         }
 
-        List<Map<String, Object>> list7 = jjgZdhGzsdService.lookJdbjg(commonInfoVo);
+        List<Map<String, Object>> list7 = jjgZdhGzsdService.lookJdbjg(commonInfoVo, 1);
         if (CollectionUtils.isNotEmpty(list7)){
             double gzsdzds = 0;
             double gzsdhgds = 0;
@@ -14669,7 +15102,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
         DecimalFormat df = new DecimalFormat("0.00");
         DecimalFormat decf = new DecimalFormat("0.##");
         List<Map<String, Object>> resultList = new ArrayList<>();
-        List<Map<String, Object>> list = jjgZdhGzsdService.lookJdbjg(commonInfoVo);//自动化
+        List<Map<String, Object>> list = jjgZdhGzsdService.lookJdbjg(commonInfoVo, 1);//自动化
         String sjz = "",ljxsjz = "";
         double jcds = 0.0;
         double hgds = 0.0;
@@ -14781,7 +15214,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
             }
 
         }
-        List<Map<String, Object>> list2 = jjgZdhMcxsService.lookJdbjg(commonInfoVo);
+        List<Map<String, Object>> list2 = jjgZdhMcxsService.lookJdbjg(commonInfoVo,1);
         if (list2!=null && list2.size()>0){
             boolean a = false,b = false;
             Double lmMax = 0.0;
@@ -14868,7 +15301,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
         DecimalFormat df = new DecimalFormat("0.0");
         DecimalFormat decf = new DecimalFormat("0.#");
         List<Map<String, Object>> resultList = new ArrayList<>();
-        List<Map<String, Object>> list = jjgZdhPzdService.lookJdbjg(commonInfoVo);
+        List<Map<String, Object>> list = jjgZdhPzdService.lookJdbjg(commonInfoVo, 1);
         if (list!=null && list.size()>0){
             boolean a = false,b =false,c = false;
             String ljxsdlmlx = "",ljxsdsjz = "";
@@ -15098,7 +15531,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
         List<Map<String, Object>> resultList = new ArrayList<>();
         DecimalFormat df = new DecimalFormat("0.00");
         DecimalFormat decf = new DecimalFormat("0.##");
-        List<Map<String, Object>> list = jjgFbgcLmgcLmssxsService.lookJdbjg(commonInfoVo);
+        List<Map<String, Object>> list = jjgFbgcLmgcLmssxsService.lookJdbjg(commonInfoVo,1);
         double jcds =0.0;
         double hgds =0.0;
         Double lmMax = 0.0;
@@ -15146,7 +15579,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
         DecimalFormat decf = new DecimalFormat("0.##");
         List<Map<String, Object>> resultList = new ArrayList<>();
         List<Map<String, Object>> finalList = new ArrayList<>();
-        List<Map<String, Object>> list = jjgZdhCzService.lookJdbjg(commonInfoVo);
+        List<Map<String, Object>> list = jjgZdhCzService.lookJdbjg(commonInfoVo, 1);
         if (list!=null && list.size()>0){
             String ljxsjz = "";
             double ljxzds =0.0,ljxhgds = 0;
@@ -15477,7 +15910,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
         DecimalFormat df = new DecimalFormat("0.00");
         DecimalFormat decf = new DecimalFormat("0.##");
         List<Map<String, Object>> resultList = new ArrayList<>();
-        List<Map<String, Object>> list = jjgZdhGzsdService.lookJdbjg(commonInfoVo);//自动化
+        List<Map<String, Object>> list = jjgZdhGzsdService.lookJdbjg(commonInfoVo, 1);//自动化
         String sjz = "",ljxsjz = "";
         double jcds = 0.0;
         double hgds = 0.0;
@@ -15587,7 +16020,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
 
 
         }
-        List<Map<String, Object>> list2 = jjgZdhMcxsService.lookJdbjg(commonInfoVo);
+        List<Map<String, Object>> list2 = jjgZdhMcxsService.lookJdbjg(commonInfoVo,1);
         if (list2!=null && list2.size()>0){
             Double lmMax = 0.0;
             Double lmMin = Double.MAX_VALUE;
@@ -15746,7 +16179,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
     private List<Map<String, Object>> getqmpzdData(CommonInfoVo commonInfoVo) throws IOException {
         List<Map<String, Object>> resultList = new ArrayList<>();
         DecimalFormat df = new DecimalFormat("0.0");
-        List<Map<String, Object>> list = jjgZdhPzdService.lookJdbjg(commonInfoVo);
+        List<Map<String, Object>> list = jjgZdhPzdService.lookJdbjg(commonInfoVo, 1);
         if (list != null && list.size()>0){
             boolean a= false;
             double zdzds = 0,zdhgds = 0;
@@ -16755,7 +17188,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
         DecimalFormat df = new DecimalFormat("0.00");
         DecimalFormat decf = new DecimalFormat("0.##");
         List<Map<String, Object>> resultList = new ArrayList<>();
-        List<Map<String, Object>> list = jjgZdhGzsdService.lookJdbjg(commonInfoVo);//自动化
+        List<Map<String, Object>> list = jjgZdhGzsdService.lookJdbjg(commonInfoVo, 1);//自动化
         String sjz = "",ljxsjz = "";
         double jcds = 0.0;
         double hgds = 0.0;
@@ -16862,7 +17295,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
             }
 
         }
-        List<Map<String, Object>> list2 = jjgZdhMcxsService.lookJdbjg(commonInfoVo);
+        List<Map<String, Object>> list2 = jjgZdhMcxsService.lookJdbjg(commonInfoVo,1);
         if (list2!=null && list2.size()>0){
             boolean a = false,b = false;
             Double lmMax = 0.0;
@@ -16943,7 +17376,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
     private List<Map<String, Object>> getpzdData(CommonInfoVo commonInfoVo) throws IOException {
         List<Map<String, Object>> resultList = new ArrayList<>();
         DecimalFormat df = new DecimalFormat("0.0");
-        List<Map<String, Object>> list = jjgZdhPzdService.lookJdbjg(commonInfoVo);
+        List<Map<String, Object>> list = jjgZdhPzdService.lookJdbjg(commonInfoVo, 1);
         if (list!=null && list.size()>0){
             boolean a= false,b = false;
             double zdzds = 0,zdhgds = 0;
@@ -17137,7 +17570,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
         List<Map<String, Object>> resultList = new ArrayList<>();
         DecimalFormat df = new DecimalFormat("0.0");
         DecimalFormat decf = new DecimalFormat("0.#");
-        List<Map<String, Object>> list = jjgFbgcLmgcLmssxsService.lookJdbjg(commonInfoVo);
+        List<Map<String, Object>> list = jjgFbgcLmgcLmssxsService.lookJdbjg(commonInfoVo,1);
         double jcds =0.0;
         double hgds =0.0;
         double ljxjcds =0.0;
@@ -17215,7 +17648,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
         DecimalFormat df = new DecimalFormat("0.0");
         DecimalFormat decf = new DecimalFormat("0.##");
         List<Map<String, Object>> resultList = new ArrayList<>();
-        List<Map<String, Object>> list = jjgZdhCzService.lookJdbjg(commonInfoVo);
+        List<Map<String, Object>> list = jjgZdhCzService.lookJdbjg(commonInfoVo, 1);
         if (list!=null && list.size()>0){
             double zds =0.0,ljxzds = 0;
             double hgds =0.0,ljxhgds = 0;
@@ -17292,7 +17725,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
         DecimalFormat df = new DecimalFormat("0.00");
         DecimalFormat decf = new DecimalFormat("0.#");
         List<Map<String, Object>> resultList = new ArrayList<>();
-        List<Map<String, Object>> listlcf = jjgFbgcLmgcLmwcLcfService.lookJdbjg(commonInfoVo);
+        List<Map<String, Object>> listlcf = jjgFbgcLmgcLmwcLcfService.lookJdbjg(commonInfoVo,1);
         List<Map<String, Object>> listbrml = jjgFbgcLmgcLmwcService.lookJdbjg(commonInfoVo);
         if (listlcf != null || listbrml != null){
             if (listlcf != null && listbrml != null) {
@@ -17447,7 +17880,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
     private List<Map<String, Object>> getlmwclcfData(CommonInfoVo commonInfoVo) throws IOException {
 
         List<Map<String, Object>> resultList = new ArrayList<>();
-        List<Map<String, Object>> list = jjgFbgcLmgcLmwcLcfService.lookJdbjg(commonInfoVo);
+        List<Map<String, Object>> list = jjgFbgcLmgcLmwcLcfService.lookJdbjg(commonInfoVo,1);
         if (list!=null && list.size()>0){
             for (Map<String, Object> stringObjectMap : list) {
                 Map map = new HashMap();
@@ -18570,5 +19003,247 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
         }
         return ljlist;
     }
+
+    // 根据路面类型返回文件名
+    private String getFileName(String lx) {
+        if (lx.contains("隧道")) {
+            return "沥青隧道路面厚度质量鉴定表（钻芯法）";
+        } else if (lx.contains("路面") || lx.contains("路面")) {
+            return "沥青路面厚度质量鉴定表（钻芯法）";
+        } else if (lx.contains("连接线")) {
+            return "沥青连接线路面厚度质量鉴定表（钻芯法）";
+        }
+        return "未知类型";
+    }
+
+    // 根据路面类型返回ccname2
+    private String getCcname2(String lx) {
+        if (lx.contains("隧道")) {
+            return "隧道路面";
+        } else if (lx.contains("路面") || lx.contains("路面")) {
+            return "路面面层";
+        } else if (lx.contains("连接线")) {
+            return "连接线路面";
+        }
+        return "未知类型";
+    }
+
+    private static List<Map<String, Object>> processJgMap(List<Map<String, Object>> jgmap) {
+        // 主线或者互通的路面相加， 其他的桥、隧左右幅相加
+        DecimalFormat df = new DecimalFormat("#.00");
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        // 处理条件1：主线路面类型
+        List<Map<String, Object>> condition1Maps = jgmap.stream()
+                .filter(map -> {
+                    String lmType = (String) map.get("路面类型");
+                    String jcxm = (String) map.get("检测项目");
+                    return lmType != null && lmType.contains("路面") &&
+                            jcxm != null && ("主线".equals(jcxm) || jcxm.contains("互通"));
+                })
+                .collect(Collectors.toList());
+
+        if (!condition1Maps.isEmpty()) {
+            int totalZds = condition1Maps.stream().mapToInt(m -> Integer.valueOf(m.get("总点数").toString())).sum();
+            int totalHgds = condition1Maps.stream().mapToInt(m -> Integer.valueOf(m.get("合格点数").toString())).sum();
+            double hgl = totalZds != 0 ? (totalHgds * 100.0 / totalZds) : 0;
+
+            // 获取主线检测项目的设计值（优先取主线项目的设计值）
+            String designValue = condition1Maps.stream()
+                    .filter(m -> "主线".equals(m.get("检测项目")))
+                    .map(m -> (String) m.get("设计值"))
+                    .filter(Objects::nonNull)
+                    .findFirst()
+                    .orElseGet(() ->
+                            condition1Maps.get(0).getOrDefault("设计值", "").toString()
+                    );
+
+            Map<String, Object> merged = new HashMap<>();
+            merged.put("分部工程名称", "主线路面");
+            merged.put("检测项目", "主线路面");
+            merged.put("总点数", totalZds);
+            merged.put("合格点数", totalHgds);
+            merged.put("合格率", df.format(hgl));
+            merged.put("设计值", designValue);  // 新增设计值保留
+            merged.put("路面类型", "主线路面");  // 明确路面类型
+            result.add(merged);
+        }
+
+        // 处理条件2：其他相同分部工程和检测项目的
+        Map<String, List<Map<String, Object>>> groups = jgmap.stream()
+                .filter(map -> !condition1Maps.contains(map)) // 排除条件1的数据
+                .collect(Collectors.groupingBy(map ->
+                        ((String) map.get("分部工程名称")) + "|" + ((String) map.get("检测项目")))
+                );
+
+        for (List<Map<String, Object>> group : groups.values()) {
+            Map<String, Object> first = group.get(0);
+            int totalZds = group.stream().mapToInt(m -> Integer.valueOf(m.get("总点数").toString())).sum();
+            int totalHgds = group.stream().mapToInt(m -> Integer.valueOf(m.get("合格点数").toString())).sum();
+            double hgl = totalZds != 0 ? (totalHgds * 100.0 / totalZds) : 0;
+
+            Map<String, Object> merged = new HashMap<>(first);
+            merged.put("总点数", totalZds);
+            merged.put("合格点数", totalHgds);
+            merged.put("合格率", df.format(hgl));
+            result.add(merged);
+        }
+
+        return result;
+    }
+
+    // 这个函数没有左右幅相加
+    private static List<Map<String, Object>> processPZDList(List<Map<String, Object>> jgmap) {
+        DecimalFormat df = new DecimalFormat("#.00");
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        // 处理条件1：沥青路面/匝道合并
+        List<Map<String, Object>> asphaltMerge = jgmap.stream()
+                .filter(map -> {
+                    String roadType = (String) map.get("路面类型");
+                    String testItem = (String) map.get("检测项目");
+                    return (roadType != null && (roadType.equals("沥青路面") || roadType.equals("沥青匝道")))
+                            && (testItem != null && !testItem.contains("连接线"));
+                })
+                .collect(Collectors.toList());
+
+        // 处理沥青类合并
+        if (!asphaltMerge.isEmpty()) {
+            Map<String, Object> merged = mergeMaps(asphaltMerge, "沥青路面", "主线路面", df);
+            result.add(merged);
+        }
+
+        // 处理条件2：混凝土收费站合并
+        List<Map<String, Object>> concreteMerge = jgmap.stream()
+                .filter(map -> "混凝土收费站".equals(map.get("路面类型")))
+                .collect(Collectors.toList());
+
+        // 处理混凝土收费站合并
+        if (!concreteMerge.isEmpty()) {
+            Map<String, Object> merged = mergeMaps(concreteMerge, null, "混凝土收费站", df);
+            result.add(merged);
+        }
+
+        // 添加未处理条目（排除两种合并类型）
+        jgmap.stream()
+                .filter(map -> !asphaltMerge.contains(map) && !concreteMerge.contains(map))
+                .forEach(result::add);
+
+        return result;
+    }
+
+    // 通用合并方法
+    private static Map<String, Object> mergeMaps(List<Map<String, Object>> maps,
+                                                 String priorityType,
+                                                 String newDeptName,
+                                                 DecimalFormat df) {
+        // 数值累加
+        int totalZds = maps.stream()
+                .mapToInt(m -> Integer.valueOf(m.get("总点数").toString()))
+                .sum();
+        int totalHgds = maps.stream()
+                .mapToInt(m -> Integer.valueOf(m.get("合格点数").toString()))
+                .sum();
+
+        // 获取基准数据（优先选择指定类型）
+        Map<String, Object> baseMap = maps.stream()
+                .filter(m -> priorityType != null && priorityType.equals(m.get("路面类型")))
+                .findFirst()
+                .orElseGet(() -> maps.get(0));
+
+        // 构建合并结果
+        Map<String, Object> merged = new HashMap<>();
+        merged.put("路面类型", baseMap.get("路面类型"));
+        merged.put("检测项目", baseMap.get("检测项目"));
+        merged.put("分部工程名称", newDeptName);
+        merged.put("总点数", totalZds);
+        merged.put("合格点数", totalHgds);
+        merged.put("合格率", totalZds != 0 ? df.format(totalHgds * 100.0 / totalZds) : "0.00");
+        merged.put("设计值", baseMap.get("设计值"));
+        merged.put("Max", baseMap.get("Max"));
+        merged.put("Min", baseMap.get("Min"));
+
+        return merged;
+    }
+
+    // 渗水系数的mapList处理： 路面和匝道合并（有匝道表，而不是互通，相当于直接把互通的路面分出来了）； 其他相同分部工程的左右幅相加
+    public List<Map<String, Object>> processSsxsMapList(List<Map<String, Object>> mapList) {
+        // 按分部工程名称分组
+        Map<String, List<Map<String, Object>>> grouped = mapList.stream()
+                .collect(Collectors.groupingBy(map -> map.get("分部工程名称").toString()));
+
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (Map.Entry<String, List<Map<String, Object>>> entry : grouped.entrySet()) {
+            String fbgc = entry.getKey();
+            List<Map<String, Object>> group = entry.getValue();
+
+            Map<String, Object> mergedMap = new HashMap<>();
+
+            // 合并逻辑
+            if ("路面".equals(fbgc)) {
+                // 特殊处理"路面"分部工程，检测项目统一为"路面"
+                mergedMap.put("分部工程名称", fbgc);
+                mergedMap.put("检测项目", "路面");
+                mergedMap.put("规定值", group.get(0).get("规定值"));
+
+                int totalJcds = 0;
+                int totalHgds = 0;
+                double maxValue = Double.MIN_VALUE;
+                double minValue = Double.MAX_VALUE;
+
+                for (Map<String, Object> item : group) {
+                    totalJcds += Integer.parseInt(item.get("检测点数").toString());
+                    totalHgds += Integer.parseInt(item.get("合格点数").toString());
+
+                    double currentMax = Double.parseDouble(item.get("最大值").toString());
+                    double currentMin = Double.parseDouble(item.get("最小值").toString());
+
+                    if (currentMax > maxValue) maxValue = currentMax;
+                    if (currentMin < minValue) minValue = currentMin;
+                }
+
+                mergedMap.put("检测点数", String.valueOf(totalJcds));
+                mergedMap.put("合格点数", String.valueOf(totalHgds));
+                mergedMap.put("合格率",
+                        totalJcds == 0 ? "0.00" : String.format("%.2f", (totalHgds * 100.0 / totalJcds)));
+                mergedMap.put("最大值", String.valueOf(maxValue));
+                mergedMap.put("最小值", String.valueOf(minValue));
+            } else {
+                // 其他分部工程按原检测项目名称保留
+                mergedMap.put("分部工程名称", fbgc);
+                mergedMap.put("检测项目", group.get(0).get("检测项目")); // 保留第一个检测项目名称
+                mergedMap.put("规定值", group.get(0).get("规定值"));
+
+                int totalJcds = 0;
+                int totalHgds = 0;
+                double maxValue = Double.MIN_VALUE;
+                double minValue = Double.MAX_VALUE;
+
+                for (Map<String, Object> item : group) {
+                    totalJcds += Integer.parseInt(item.get("检测点数").toString());
+                    totalHgds += Integer.parseInt(item.get("合格点数").toString());
+
+                    double currentMax = Double.parseDouble(item.get("最大值").toString());
+                    double currentMin = Double.parseDouble(item.get("最小值").toString());
+
+                    if (currentMax > maxValue) maxValue = currentMax;
+                    if (currentMin < minValue) minValue = currentMin;
+                }
+
+                mergedMap.put("检测点数", String.valueOf(totalJcds));
+                mergedMap.put("合格点数", String.valueOf(totalHgds));
+                mergedMap.put("合格率",
+                        totalJcds == 0 ? "0.00" : String.format("%.2f", (totalHgds * 100.0 / totalJcds)));
+                mergedMap.put("最大值", String.valueOf(maxValue));
+                mergedMap.put("最小值", String.valueOf(minValue));
+            }
+
+            result.add(mergedMap);
+        }
+
+        return result;
+    }
+
 
 }

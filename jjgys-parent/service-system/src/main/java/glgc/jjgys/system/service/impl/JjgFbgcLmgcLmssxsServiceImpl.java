@@ -40,6 +40,8 @@ import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * <p>
@@ -499,7 +501,7 @@ public class JjgFbgcLmgcLmssxsServiceImpl extends ServiceImpl<JjgFbgcLmgcLmssxsM
     }
 
     @Override
-    public List<Map<String, Object>> lookJdbjg(CommonInfoVo commonInfoVo) throws IOException {
+    public List<Map<String, Object>> lookJdbjg(CommonInfoVo commonInfoVo, int flag) throws IOException {
         DecimalFormat df = new DecimalFormat("0.00");
         DecimalFormat decf = new DecimalFormat("0.##");
         String proname = commonInfoVo.getProname();
@@ -525,7 +527,7 @@ public class JjgFbgcLmgcLmssxsServiceImpl extends ServiceImpl<JjgFbgcLmgcLmssxsM
                 if (!wb.isSheetHidden(wb.getSheetIndex(wb.getSheetAt(j)))) {
                     XSSFSheet slSheet = wb.getSheetAt(j);
                     String sheetName = slSheet.getSheetName();
-                    if (!"source".equals(sheetName)){
+                    if (!"source".equals(sheetName) && (flag == 1 || sheetName.contains("沥青路面") || sheetName.contains("匝道路面"))){
                         int sllastRowNum = slSheet.getLastRowNum();
                         slSheet.getRow(sllastRowNum).getCell(4).setCellType(CellType.STRING);//检测点数
                         slSheet.getRow(sllastRowNum).getCell(8).setCellType(CellType.STRING);//合格点数
@@ -537,6 +539,7 @@ public class JjgFbgcLmgcLmssxsServiceImpl extends ServiceImpl<JjgFbgcLmgcLmssxsM
 
                         Map<String,Object> map1 = new HashMap<>();
                         map1.put("检测项目",sheetName);
+                        map1.put("分部工程名称","路面");
                         map1.put("规定值",slSheet.getRow(6).getCell(9).getStringCellValue());
                         map1.put("检测点数",decf.format(Double.valueOf(slSheet.getRow(sllastRowNum).getCell(4).getStringCellValue())));
                         map1.put("合格点数",decf.format(Double.valueOf(slSheet.getRow(sllastRowNum).getCell(8).getStringCellValue())));
@@ -546,6 +549,85 @@ public class JjgFbgcLmgcLmssxsServiceImpl extends ServiceImpl<JjgFbgcLmgcLmssxsM
                         map1.put("最小值",slSheet.getRow(sllastRowNum).getCell(13).getStringCellValue());
 
                         mapList.add(map1);
+                    }else if(flag == 2){
+                        int sllastRowNum = slSheet.getLastRowNum();
+                        int jcds = 0;
+                        int hgds = 0;
+                        double maxValue = Double.MIN_VALUE;
+                        double minValue = Double.MAX_VALUE;
+                        String currentSection = "";
+
+                        // 第六行开始有数据
+                        for (int i = 6; i <= sllastRowNum; i += 3) {
+                            XSSFRow row = slSheet.getRow(i);
+                            if (row == null) break;
+                            
+                            String sectionName = row.getCell(0).getStringCellValue();
+                            if (sectionName.equals("合计") || sectionName.isEmpty()) break;
+
+                            // Extract the section name (Chinese part)
+                            String section;
+                            Matcher matcher = Pattern.compile("([\\u4E00-\\u9FA5a-zA-Z0-9]*?(?=[A-Z]+\\d))").matcher(sectionName);
+                            if (matcher.find()) {
+                                section = matcher.group(1).trim();
+                            } else {
+                                section = sectionName.replaceAll("[^\\u4E00-\\u9FA5a-zA-Z0-9]", "").trim();
+                            }
+
+                            if (!section.equals(currentSection)) {
+                                if (!currentSection.isEmpty()) {
+                                    Map<String, Object> map = new HashMap<>();
+                                    map.put("检测项目", sheetName);
+                                    map.put("分部工程名称", currentSection);
+                                    row.getCell(9).setCellType(CellType.STRING);
+                                    map.put("规定值", row.getCell(9).getStringCellValue()); //规定值一般一样
+                                    map.put("检测点数", decf.format(jcds));
+                                    map.put("合格点数", decf.format(hgds));
+                                    map.put("合格率", df.format((hgds * 1.0 / jcds) * 100));
+                                    map.put("最大值", maxValue);
+                                    map.put("最小值", minValue);
+                                    mapList.add(map);
+                                }
+                                jcds = 0;
+                                hgds = 0;
+                                maxValue = Double.MIN_VALUE;
+                                minValue = Double.MAX_VALUE;
+                                currentSection = section;
+                            }
+
+                            // 如果没有遇到下一个分部工程
+                            row.getCell(8).setCellType(CellType.STRING);
+                            row.getCell(9).setCellType(CellType.STRING);
+                            String testResStr = row.getCell(8).getStringCellValue();
+                            String standardStr = row.getCell(9).getStringCellValue();
+
+                            if (!"".equals(testResStr) && !"".equals(standardStr)) {
+                                double testRes = Double.parseDouble(testResStr);
+                                double standard = Double.parseDouble(standardStr);
+
+                                jcds++;
+                                if (testRes <= standard) {
+                                    hgds++;
+                                }
+
+                                if (testRes > maxValue) maxValue = testRes;
+                                if (testRes < minValue) minValue = testRes;
+                            }
+
+                        }
+
+                        if (!currentSection.isEmpty()) {
+                            Map<String, Object> map = new HashMap<>();
+                            map.put("检测项目", sheetName);
+                            map.put("分部工程名称", currentSection);
+                            map.put("规定值", slSheet.getRow(6).getCell(9).getStringCellValue());
+                            map.put("检测点数", decf.format(jcds));
+                            map.put("合格点数", decf.format(hgds));
+                            map.put("合格率", df.format((hgds * 1.0 / jcds) * 100));
+                            map.put("最大值", maxValue);
+                            map.put("最小值", minValue);
+                            mapList.add(map);
+                        }
                     }
 
 

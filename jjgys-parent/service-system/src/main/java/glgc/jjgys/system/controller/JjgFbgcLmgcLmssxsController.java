@@ -80,7 +80,7 @@ public class JjgFbgcLmgcLmssxsController {
     @ApiOperation("查看沥青路面渗水系数鉴定结果")
     @PostMapping("lookJdbjg")
     public Result lookJdbjg(@RequestBody CommonInfoVo commonInfoVo) throws IOException {
-        List<Map<String,Object>> jdjg = jjgFbgcLmgcLmssxsService.lookJdbjg(commonInfoVo);
+        List<Map<String,Object>> jdjg = jjgFbgcLmgcLmssxsService.lookJdbjg(commonInfoVo,1);
         return Result.ok(jdjg);
 
     }

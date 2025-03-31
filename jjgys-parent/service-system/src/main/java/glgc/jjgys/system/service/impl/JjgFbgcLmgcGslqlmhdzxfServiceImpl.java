@@ -39,6 +39,9 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 /**
  * <p>
  *  服务实现类
@@ -516,38 +519,47 @@ public class JjgFbgcLmgcGslqlmhdzxfServiceImpl extends ServiceImpl<JjgFbgcLmgcGs
                 String reportPath = directory.getCanonicalPath();
                 String path = reportPath + File.separator + "沥青路面厚度-钻芯法.xlsx";
                 Files.copy(Paths.get(path), new FileOutputStream(f));*/
+                // 这个复制，直接把表头也拿来了，所以后面一直没有初始化表头，只有填写
                 InputStream inputStream = getClass().getClassLoader().getResourceAsStream("static/沥青路面厚度-钻芯法.xlsx");
                 Files.copy(inputStream, f.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 FileInputStream out = new FileInputStream(f);
                 wb = new XSSFWorkbook(out);
                 //路面左幅
-                lmhdzxf(wb, zxzfdata, "路面左幅");
+                if(zxzfdata.size() != 0)lmhdzxf(wb, zxzfdata, "路面左幅");
                 //主线右幅
-                lmhdzxf(wb, zxyfdata, "路面右幅");
+                if(zxyfdata.size() != 0)lmhdzxf(wb, zxyfdata, "路面右幅");
                 //隧道左幅
-                lmhdzxf(wb, sdzfdata, "隧道左幅");
+                if(sdzfdata.size() != 0)lmhdzxf(wb, sdzfdata, "隧道左幅");
                 //隧道右幅
-                lmhdzxf(wb, sdyfdata, "隧道右幅");
+                if(sdyfdata.size() != 0)lmhdzxf(wb, sdyfdata, "隧道右幅");
                 //桥面左幅
-                lmhdzxf(wb, qlzfdata, "桥面左幅");
+                if(qlzfdata.size() != 0)lmhdzxf(wb, qlzfdata, "桥面左幅");
                 //桥面右幅
-                lmhdzxf(wb, qlyfdata, "桥面右幅");
+                if(qlyfdata.size() != 0)lmhdzxf(wb, qlyfdata, "桥面右幅");
                 //路面匝道
-                lmhdzxf(wb, zddata, "路面匝道");
+                if(zddata.size() != 0)lmhdzxf(wb, zddata, "路面匝道");
                 //连接线
-                lmhdzxf(wb, ljxdata, "连接线");
+                if(ljxdata.size() != 0)lmhdzxf(wb, ljxdata, "连接线");
 
             /*if (ljxdata.size()>0){
                 f = new File(filepath+File.separator+proname+File.separator+htd+File.separator+"22沥青路面厚度-连接线-钻芯法.xlsx");
             }*/
 
+                // 计算值填写
                 for (int j = 0; j < wb.getNumberOfSheets(); j++) {
-                    if (shouldBeCalculate(wb.getSheetAt(j))) {
+                    if (shouldBeCalculate(wb.getSheetAt(j))) { // 这个判断很让人疑惑，为什么需要判断表头是不是含“鉴定表”三个字？肯定是都有的啊
+                        // 这个计算里面已经写了竖向不同的表的处理逻辑，所以不用维护row变量了
                         calculateCompactionSheet(wb.getSheetAt(j), wb.getSheetName(j),proname);
                     }
                 }
-                getTunnelTotal(wb.getSheet("隧道左幅"));
-                getTunnelTotal(wb.getSheet("隧道右幅"));
+
+                // 这个对于隧道的单独处理也写了不同隧道段的代码
+                if (wb.getSheet("隧道左幅") != null) {
+                    getTunnelTotal(wb.getSheet("隧道左幅"));
+                }
+                if (wb.getSheet("隧道右幅") != null) {
+                    getTunnelTotal(wb.getSheet("隧道右幅"));
+                }
 
                 for (int j = 0; j < wb.getNumberOfSheets(); j++) {   //表内公式  计算 显示结果
                     if(!wb.getSheetAt(j).getSheetName().equals("source"))
@@ -670,7 +682,7 @@ public class JjgFbgcLmgcGslqlmhdzxfServiceImpl extends ServiceImpl<JjgFbgcLmgcGs
         double a = 0,b = 0,c = 0,d = 0;
         XSSFFormulaEvaluator e = new XSSFFormulaEvaluator(sheet.getWorkbook());
         String grade = projectService.getGrade(proname);
-        if ("高速公路".equals(grade) || "一级公路".equals("grade")){
+        if ("高速公路".equals(grade) || "一级公路".equals(grade)){
             a = 0.1;
             b = 0.05;
             c = 0.2;
@@ -698,6 +710,7 @@ public class JjgFbgcLmgcGslqlmhdzxfServiceImpl extends ServiceImpl<JjgFbgcLmgcGs
                 flag = true;
                 continue;
             }
+            // 结尾评定计算
             if ("评定".equals(row.getCell(0).toString())) {
                 row.getCell(3).setCellFormula("AVERAGE("
                         +rowstart.getCell(6).getReference()+":"
@@ -889,62 +902,99 @@ public class JjgFbgcLmgcGslqlmhdzxfServiceImpl extends ServiceImpl<JjgFbgcLmgcGs
     /**
      *
      * @param wb
-     * @param data
+     * @param data1
      * @param sheetname
      */
-    private void lmhdzxf(XSSFWorkbook wb, List<JjgFbgcLmgcGslqlmhdzxf> data, String sheetname) throws ParseException {
+    private void lmhdzxf(XSSFWorkbook wb, List<JjgFbgcLmgcGslqlmhdzxf> data1, String sheetname) throws ParseException {
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy.MM.dd");
-        if(data.size() > 0) {
-            createTable(wb, gettableNum(data.size()), sheetname);
-            XSSFSheet sheet = wb.getSheet(sheetname);
-            String type = data.get(0).getLx();
-            int index = 6;
-            sheet.getRow(1).getCell(1).setCellValue(data.get(0).getProname());
-            sheet.getRow(1).getCell(17).setCellValue(data.get(0).getHtd());
-            sheet.getRow(2).getCell(1).setCellValue(data.get(0).getFbgc());
-            if(type.equals("隧")){
-                sheet.getRow(2).getCell(9).setCellValue("隧道路面");
-            }
-            else if(type.equals("匝道"))
-            {
-                sheet.getRow(2).getCell(9).setCellValue("匝道路面");
-            }
-            else if(type.contains("连接线"))
-            {
-                sheet.getRow(2).getCell(9).setCellValue("连接线");
-            } else
-            {
-                sheet.getRow(2).getCell(9).setCellValue("路面面层（主线）");
-            }
 
-            String date = simpleDateFormat.format(data.get(0).getJcsj());
-            for(int i =1; i < data.size(); i++){
-                date = JjgFbgcCommonUtils.getLastDate(date, simpleDateFormat.format(data.get(i).getJcsj()));
+        // 对data 进行处理，分开不同名称的记录。 一起维护一个row（起始行）
+        List<List<JjgFbgcLmgcGslqlmhdzxf>> allData = new ArrayList<List<JjgFbgcLmgcGslqlmhdzxf>>();
+        int row = 0;
+        String lx = data1.get(0).getLx(); // 区分不同的类型
+        List<JjgFbgcLmgcGslqlmhdzxf> templatData = new ArrayList<JjgFbgcLmgcGslqlmhdzxf>();
+        for(JjgFbgcLmgcGslqlmhdzxf item : data1){
+            if(!lx.equals(item.getLx())){
+                // 记录另一个类型，把前一个list添加进入allData
+                lx = item.getLx();
+                allData.add(templatData);
+                templatData = new ArrayList<>();
+
+                // 记录当前类型
+                templatData.add(item);
+            }else {
+                templatData.add(item);
             }
-            sheet.getRow(2).getCell(17).setCellValue(date);
-            for(int i =0; i < data.size(); i++){
-                sheet.getRow(index+i).getCell(0).setCellValue(data.get(i).getLx()+data.get(i).getZh());
-                String zyfname;
-                if (data.get(i).getZh().contains("Z")){
-                    zyfname = "左幅";
-                }else if (data.get(i).getZh().contains("Y")){
-                    zyfname = "右幅";
-                }else {
-                    zyfname = "-";
+        }
+        allData.add(templatData);
+
+        // 遍历每个不同类型的data
+        for(List<JjgFbgcLmgcGslqlmhdzxf> data : allData){
+            int tempRow = 0;
+            if(data.size() > 0) {
+                // gettableNum()的逻辑不更改，就是判断data里面的数据会不会超过18,在createTable里面维护row
+                tempRow = createTable(wb, gettableNum(data.size()), sheetname, row); // 记录着创建的表格有多高
+                XSSFSheet sheet = wb.getSheet(sheetname);
+                String type = data.get(0).getLx();
+                int index = 6;
+                // 表头信息,只有第一次填写
+
+                sheet.getRow(1 ).getCell(1).setCellValue(data.get(0).getProname());
+                sheet.getRow(1 ).getCell(17).setCellValue(data.get(0).getHtd());
+                sheet.getRow(2 ).getCell(1).setCellValue(data.get(0).getFbgc());
+
+                if(type.contains("隧")){
+                    sheet.getRow(2 + row).getCell(9).setCellValue("隧道路面");
                 }
-                sheet.getRow(index+i).getCell(1).setCellValue(zyfname);
-                sheet.getRow(index+i).getCell(2).setCellValue(Double.parseDouble(data.get(i).getSmccz1()));
-                sheet.getRow(index+i).getCell(3).setCellValue(Double.parseDouble(data.get(i).getSmccz2()));
-                sheet.getRow(index+i).getCell(4).setCellValue(Double.parseDouble(data.get(i).getSmccz3()));
-                sheet.getRow(index+i).getCell(5).setCellValue(Double.parseDouble(data.get(i).getSmccz4()));
-                sheet.getRow(index+i).getCell(7).setCellValue(Double.parseDouble(data.get(i).getSmcsjz()));
+                else if(type.contains("匝道") || type.contains("互通"))
+                {
+                    sheet.getRow(2 + row).getCell(9).setCellValue("匝道路面");
+                }
+                else if(type.contains("连接线"))
+                {
+                    sheet.getRow(2 + row).getCell(9).setCellValue("连接线");
+                } else
+                {
+                    sheet.getRow(2 + row).getCell(9).setCellValue("路面面层（主线）");
+                }
 
-                sheet.getRow(index+i).getCell(11).setCellValue(Double.parseDouble(data.get(i).getZhdcz1()));
-                sheet.getRow(index+i).getCell(12).setCellValue(Double.parseDouble(data.get(i).getZhdcz2()));
-                sheet.getRow(index+i).getCell(13).setCellValue(Double.parseDouble(data.get(i).getZhdcz3()));
-                sheet.getRow(index+i).getCell(14).setCellValue(Double.parseDouble(data.get(i).getZhdcz4()));
-                sheet.getRow(index+i).getCell(16).setCellValue(Double.parseDouble(data.get(i).getZhdsjz()));
+                String date = simpleDateFormat.format(data.get(0).getJcsj()); // 表头检测时间
+                for(int i =1; i < data.size(); i++){
+                    date = JjgFbgcCommonUtils.getLastDate(date, simpleDateFormat.format(data.get(i).getJcsj()));
+                }
+                sheet.getRow(2 + row).getCell(17).setCellValue(date);
+
+
+                // 填写基本数据：测值还有设计值
+                for(int i =0; i < data.size(); i++){
+                    sheet.getRow(index+i + row).getCell(0).setCellValue(data.get(i).getLx()+data.get(i).getZh());
+                    String zyfname;
+                    if (data.get(i).getZh().contains("Z")){
+                        zyfname = "左幅";
+                    }else if (data.get(i).getZh().contains("Y")){
+                        zyfname = "右幅";
+                    }else {
+                        zyfname = "-";
+                    }
+                    sheet.getRow(index+i + row).getCell(1).setCellValue(zyfname);
+                    sheet.getRow(index+i + row).getCell(2).setCellValue(Double.parseDouble(data.get(i).getSmccz1()));
+                    sheet.getRow(index+i + row).getCell(3).setCellValue(Double.parseDouble(data.get(i).getSmccz2()));
+                    sheet.getRow(index+i + row).getCell(4).setCellValue(Double.parseDouble(data.get(i).getSmccz3()));
+                    sheet.getRow(index+i + row).getCell(5).setCellValue(Double.parseDouble(data.get(i).getSmccz4()));
+                    sheet.getRow(index+i + row).getCell(7).setCellValue(Double.parseDouble(data.get(i).getSmcsjz()));
+
+                    sheet.getRow(index+i + row).getCell(11).setCellValue(Double.parseDouble(data.get(i).getZhdcz1()));
+                    sheet.getRow(index+i + row).getCell(12).setCellValue(Double.parseDouble(data.get(i).getZhdcz2()));
+                    sheet.getRow(index+i + row).getCell(13).setCellValue(Double.parseDouble(data.get(i).getZhdcz3()));
+                    sheet.getRow(index+i + row).getCell(14).setCellValue(Double.parseDouble(data.get(i).getZhdcz4()));
+                    sheet.getRow(index+i + row).getCell(16).setCellValue(Double.parseDouble(data.get(i).getZhdsjz()));
+                }
+
+                //
+                row = tempRow;
             }
+
+
         }
 
 
@@ -955,23 +1005,48 @@ public class JjgFbgcLmgcGslqlmhdzxfServiceImpl extends ServiceImpl<JjgFbgcLmgcGs
      * @param wb
      * @param tableNum
      * @param sheetname
+     * comment：这个函数比较扭曲，怕长时间忘记，为了后面的维护者能更快地理解这个函数，做以下思路说明：（2025.2.26）
+     * 1. 首先分两种情况，第一种是row的值为0，一种是其他，原因是原本这个代码的逻辑只能一次性创建完所有的表格，但是后面甲方提出得分开不同的隧道等，
+     * 必须分开创建，而且由于一开始表格是空的，可以自己复制自己。这个row等于0是第一个开发者写的代码，我其实不太懂为什么要这样操作，所以在row!=0
+     * 的情况我都简化了，无论是第一个还是后面的表，我都始终复制18行。
+     * 2. 接着copyRows函数其实不需要步入去看懂，就是把源表的start到end行的内容复制到目标表的pposition位置，注意从0开始，有点绕的
+     * 3. 总的就是，复制表头+数据填写区+最后复制“评定”。难在控制行复制，很绕。
+     *
      */
-    private void createTable(XSSFWorkbook wb, int tableNum, String sheetname) {
+    private int createTable(XSSFWorkbook wb, int tableNum, String sheetname, int row) {
         int record = 0;
+        int tempRow = 0; // 记录这个函数创建了多少行的表格，最后加到row里面
         record = tableNum;
-        for (int i = 1; i < record; i++) {
-            if(i < record-1){
-                RowCopy.copyRows(wb, sheetname, sheetname, 6, 23, (i - 1) * 18 + 24);
+
+        if(row == 0){
+            for (int i = 1; i < record; i++) { // i = 1开始，因为前面已经有一个表格
+                if(i < record-1){
+                    // 其实感觉可以写一样的长度，没必要去分开，但是可能师兄有考虑别的东西
+                    // 最后一个表格之前都是
+                    RowCopy.copyRows(wb, sheetname, sheetname, 6, 23, (i - 1) * 18 + 24 + row);
+                }
+                else{
+                    // 最后个表格少一行
+                    RowCopy.copyRows(wb, sheetname, sheetname, 6, 22, (i - 1) * 18 + 24 + row);
+                }
             }
-            else{
-                RowCopy.copyRows(wb, sheetname, sheetname, 6, 22, (i - 1) * 18 + 24);
+            if(record == 1){
+                wb.getSheet(sheetname).shiftRows(23, 24, -1);
             }
+            RowCopy.copyRows(wb, "source", sheetname, 0, 1,(record) * 18 + 3);
+            wb.setPrintArea(wb.getSheetIndex(sheetname), 0, 19, 0,(record) * 18 + 4);
+            return (record) * 18 + 3 + 2; // 最后加2是因为倒数第二行
+        }else{
+            // 拷贝表头
+            RowCopy.copyRows(wb, sheetname, sheetname, 0, 5, row);
+            for (int i = 1; i <= record; i++) { // 不再有第一个表格了，所以有多少就要复制多少，处理也稍微统一一点，不需要一个23一个22了
+                RowCopy.copyRows(wb, "桥面左幅", sheetname, 6, 23, (i - 1) * 18 + row+6);//计算上表头
+            }
+            RowCopy.copyRows(wb, "source", sheetname, 0, 1,(record) * 18 + row + 6); // ”评定 “那一行，那么这个pPosition就是倒数第二行
+            wb.setPrintArea(wb.getSheetIndex(sheetname), 0, 19, 0,(record) * 18 + row + 6 + 1); // 包括评定那行
+            return (record) * 18 + row + 6 + 2; // 最后加2是因为倒数第二行
         }
-        if(record == 1){
-            wb.getSheet(sheetname).shiftRows(23, 24, -1);
-        }
-        RowCopy.copyRows(wb, "source", sheetname, 0, 1,(record) * 18 + 3);
-        wb.setPrintArea(wb.getSheetIndex(sheetname), 0, 19, 0,(record) * 18 + 4);
+
     }
 
     /**
@@ -980,6 +1055,7 @@ public class JjgFbgcLmgcGslqlmhdzxfServiceImpl extends ServiceImpl<JjgFbgcLmgcGs
      * @return
      */
     private int gettableNum(int size) {
+        // 这个模18就让人看不懂
         return size%18 <= 16 ? size/18+1 : size/18+2;
     }
 
@@ -995,95 +1071,212 @@ public class JjgFbgcLmgcGslqlmhdzxfServiceImpl extends ServiceImpl<JjgFbgcLmgcGs
             return null;
         } else {
             XSSFWorkbook wb = new XSSFWorkbook(new FileInputStream(f));
-            Map<String,Object> jgmap = new HashMap<>();
             List<Map<String,Object>> mapList = new ArrayList<>();
+
+
+
+            // 遍历每个工作表
             for (int j = 0; j < wb.getNumberOfSheets(); j++) {
-                if (!wb.isSheetHidden(wb.getSheetIndex(wb.getSheetAt(j)))) {
+                if (!wb.isSheetHidden(j)) {
                     XSSFSheet slSheet = wb.getSheetAt(j);
-                    XSSFCell xmname = slSheet.getRow(1).getCell(1);//项目名
-                    XSSFCell htdname = slSheet.getRow(1).getCell(17);//合同段名
-                    Map map = new HashMap();
+                    XSSFCell xmname = slSheet.getRow(1).getCell(1); // 项目名
+                    XSSFCell htdname = slSheet.getRow(1).getCell(17); // 合同段名
 
                     if (proname.equals(xmname.toString()) && htd.equals(htdname.toString())) {
-                        //获取到最后一行
-                        int lastRowNum = slSheet.getLastRowNum();
-                        /*slSheet.getRow(lastRowNum).getCell(3).setCellType(CellType.STRING);
-                        slSheet.getRow(lastRowNum).getCell(6).setCellType(CellType.STRING);
-                        slSheet.getRow(lastRowNum).getCell(10).setCellType(CellType.STRING);
+                        boolean inTable = false;
+                        int dataStartRow = 0;
 
-                        slSheet.getRow(lastRowNum-1).getCell(4).setCellType(CellType.STRING);
+                        // 遍历工作表行处理每个表格
+                        for (int i = slSheet.getFirstRowNum(); i <= slSheet.getLastRowNum(); i++) {
+                            XSSFRow currentRow = slSheet.getRow(i);
+                            if (currentRow == null) continue;
 
-                        slSheet.getRow(lastRowNum-2).getCell(15).setCellType(CellType.STRING);
-                        slSheet.getRow(lastRowNum-2).getCell(16).setCellType(CellType.STRING);
-                        slSheet.getRow(lastRowNum-2).getCell(10).setCellType(CellType.STRING);
-                        slSheet.getRow(3).getCell(2).setCellType(CellType.STRING);
+                            // 表格开始：发现"桩号"行
+                            if ("桩     号".equals(currentRow.getCell(0).toString())) {
+                                dataStartRow = i + 3; // 数据起始行
+                                i += 2; // 跳过表头行
+                                inTable = true;
+                                continue;
+                            }
 
-                        jgmap.put("检测点数",decf.format(Double.valueOf(slSheet.getRow(lastRowNum).getCell(3).getStringCellValue())));
-                        jgmap.put("合格点数",decf.format(Double.valueOf(slSheet.getRow(lastRowNum).getCell(6).getStringCellValue())));
-                        jgmap.put("合格率",df.format(Double.valueOf(slSheet.getRow(lastRowNum).getCell(10).getStringCellValue())));
-                        jgmap.put("允许偏差",slSheet.getRow(lastRowNum-1).getCell(4).getStringCellValue());
+                            // 表格结束：发现"评定"行
+                            if (inTable && "评定".equals(currentRow.getCell(0).toString())) {
+                                // 获取相关行对象
+                                XSSFRow evalRow = currentRow; // 评定行
+                                XSSFRow nextRow = slSheet.getRow(i+1); // 统计数据行 right
+                                XSSFRow prevRow = currentRow; // 最大/最小值行
 
-                        jgmap.put("最大值",slSheet.getRow(lastRowNum-2).getCell(15).getStringCellValue());
-                        jgmap.put("最小值",slSheet.getRow(lastRowNum-2).getCell(16).getStringCellValue());
-                        jgmap.put("代表值",slSheet.getRow(lastRowNum-2).getCell(10).getStringCellValue());
-                        jgmap.put("设计值",slSheet.getRow(3).getCell(2).getStringCellValue());
-                        mapList.add(jgmap);*/
-                        //jgmap.add(map);
-                        slSheet.getRow(lastRowNum).getCell(5).setCellType(CellType.STRING);//总点数
-                        slSheet.getRow(lastRowNum).getCell(7).setCellType(CellType.STRING);//合格点数
-                        slSheet.getRow(lastRowNum).getCell(9).setCellType(CellType.STRING);//合格率
+                                // 设置单元格类型并获取数据
+                                // 上面层数据 √
+                                nextRow.getCell(5).setCellType(CellType.STRING);
+                                String zds = nextRow.getCell(5).getStringCellValue();
+                                nextRow.getCell(7).setCellType(CellType.STRING);
+                                String hgds = nextRow.getCell(7).getStringCellValue();
+                                nextRow.getCell(9).setCellType(CellType.STRING);
+                                String hgl = nextRow.getCell(9).getStringCellValue();
 
-                        slSheet.getRow(lastRowNum).getCell(14).setCellType(CellType.STRING);//总点数
-                        slSheet.getRow(lastRowNum).getCell(16).setCellType(CellType.STRING);//合格点数
-                        slSheet.getRow(lastRowNum).getCell(18).setCellType(CellType.STRING);//合格率
+                                // 总厚度数据 √
+                                nextRow.getCell(14).setCellType(CellType.STRING);
+                                String zds1 = nextRow.getCell(14).getStringCellValue();
+                                nextRow.getCell(16).setCellType(CellType.STRING);
+                                String hgds1 = nextRow.getCell(16).getStringCellValue();
+                                nextRow.getCell(18).setCellType(CellType.STRING);
+                                String hgl1 = nextRow.getCell(18).getStringCellValue();
 
-                        slSheet.getRow(6).getCell(7).setCellType(CellType.STRING);
-                        slSheet.getRow(6).getCell(16).setCellType(CellType.STRING);
+                                // 获取设计值，只拿一行就够了，就是第一行的数据 √
+                                XSSFRow designRow = slSheet.getRow(dataStartRow);
+                                designRow.getCell(7).setCellType(CellType.STRING);
+                                String designValue1 = designRow.getCell(7).getStringCellValue();
+                                designRow.getCell(16).setCellType(CellType.STRING);
+                                String designValue2 = designRow.getCell(16).getStringCellValue();
 
-                        slSheet.getRow(lastRowNum-1).getCell(21).setCellType(CellType.STRING);
-                        slSheet.getRow(lastRowNum-1).getCell(22).setCellType(CellType.STRING);
+                                // 获取代表值和极值 √
+                                evalRow.getCell(21).setCellType(CellType.STRING);
+                                String repValue1 = evalRow.getCell(21).getStringCellValue();
+                                evalRow.getCell(22).setCellType(CellType.STRING);
+                                String repValue2 = evalRow.getCell(22).getStringCellValue();
 
-                        slSheet.getRow(lastRowNum-1).getCell(16).setCellType(CellType.STRING);
-                        slSheet.getRow(lastRowNum-1).getCell(7).setCellType(CellType.STRING);
+                                prevRow.getCell(23).setCellType(CellType.STRING);
+                                String max1 = prevRow.getCell(23).getStringCellValue();
+                                prevRow.getCell(24).setCellType(CellType.STRING);
+                                String min1 = prevRow.getCell(24).getStringCellValue();
+                                prevRow.getCell(25).setCellType(CellType.STRING);
+                                String max2 = prevRow.getCell(25).getStringCellValue();
+                                prevRow.getCell(26).setCellType(CellType.STRING);
+                                String min2 = prevRow.getCell(26).getStringCellValue();
 
-                        slSheet.getRow(lastRowNum-1).getCell(23).setCellType(CellType.STRING);
-                        slSheet.getRow(lastRowNum-1).getCell(24).setCellType(CellType.STRING);
-                        slSheet.getRow(lastRowNum-1).getCell(25).setCellType(CellType.STRING);
-                        slSheet.getRow(lastRowNum-1).getCell(26).setCellType(CellType.STRING);
+                                // 提取桩号中的路面或者隧道或者连接线的名称
+                                designRow.getCell(0).setCellType(CellType.STRING);
+                                String input = designRow.getCell(0).getStringCellValue();
+                                Pattern pattern = Pattern.compile("^(.*?)(?=[A-Za-z]+\\d)");
+                                Matcher matcher = pattern.matcher(input);
 
 
-                        double zds = Double.valueOf(slSheet.getRow(lastRowNum).getCell(5).getStringCellValue());
-                        double hgds = Double.valueOf(slSheet.getRow(lastRowNum).getCell(7).getStringCellValue());
-                        double hgl = Double.valueOf(slSheet.getRow(lastRowNum).getCell(9).getStringCellValue());
+                                // 构建数据映射
+                                Map<String, Object> dataMap = new HashMap<>();
+                                dataMap.put("路面类型", wb.getSheetName(j));
+                                if (matcher.find()) {
+                                    String result = matcher.group(1);
+                                    dataMap.put("路面名称", result);
+                                }
+                                dataMap.put("上面层厚度检测点数", zds);
+                                dataMap.put("上面层厚度合格点数", hgds);
+                                dataMap.put("上面层厚度合格率", hgl);
+                                dataMap.put("上面层设计值", designValue1);
+                                dataMap.put("上面层代表值", repValue1);
+                                dataMap.put("上面层平均值最大值", max1);
+                                dataMap.put("上面层平均值最小值", min1);
 
-                        double zds1 = Double.valueOf(slSheet.getRow(lastRowNum).getCell(14).getStringCellValue());
-                        double hgds1 = Double.valueOf(slSheet.getRow(lastRowNum).getCell(16).getStringCellValue());
-                        double hgl1 = Double.valueOf(slSheet.getRow(lastRowNum).getCell(18).getStringCellValue());
-                        String zdsz1 = decf.format(zds);
-                        String hgdsz1 = decf.format(hgds);
-                        String hglz1 = df.format(hgl);
-                        map.put("路面类型", wb.getSheetName(j));
-                        map.put("上面层厚度检测点数", zdsz1);
-                        map.put("上面层厚度合格点数", hgdsz1);
-                        map.put("上面层厚度合格率", hglz1);
-                        map.put("上面层设计值", slSheet.getRow(6).getCell(7).getStringCellValue());
-                        map.put("上面层代表值", slSheet.getRow(lastRowNum-1).getCell(21).getStringCellValue());
-                        map.put("上面层平均值最大值", slSheet.getRow(lastRowNum-1).getCell(23).getStringCellValue());
-                        map.put("上面层平均值最小值", slSheet.getRow(lastRowNum-1).getCell(24).getStringCellValue());
+                                dataMap.put("总厚度检测点数", zds1);
+                                dataMap.put("总厚度合格点数", hgds1);
+                                dataMap.put("总厚度合格率", hgl1);
+                                dataMap.put("总厚度设计值", designValue2);
+                                dataMap.put("总厚度代表值", repValue2);
+                                dataMap.put("总厚度平均值最大值", max2);
+                                dataMap.put("总厚度平均值最小值", min2);
 
-                        map.put("总厚度检测点数", decf.format(zds1));
-                        map.put("总厚度合格点数", decf.format(hgds1));
-                        map.put("总厚度合格率", df.format(hgl1));
-                        map.put("总厚度设计值", slSheet.getRow(6).getCell(16).getStringCellValue());
-                        map.put("总厚度代表值", slSheet.getRow(lastRowNum-1).getCell(22).getStringCellValue());
-                        map.put("总厚度平均值最大值", slSheet.getRow(lastRowNum-1).getCell(25).getStringCellValue());
-                        map.put("总厚度平均值最小值", slSheet.getRow(lastRowNum-1).getCell(26).getStringCellValue());
-                        mapList.add(map);
+                                mapList.add(dataMap);
+                                inTable = false; // 重置表格状态
+                            }
+                        }
                     }
-
-
                 }
             }
+
+//            // 遍历每个工作表， 以前sheet内只有单个表的遍历方式
+//            for (int j = 0; j < wb.getNumberOfSheets(); j++) {
+//                if (!wb.isSheetHidden(wb.getSheetIndex(wb.getSheetAt(j)))) {
+//                    XSSFSheet slSheet = wb.getSheetAt(j);
+//
+//                    //处理逻辑：对每一个纵向“鉴定表”进行遍历，通过表头和表尾“评定”行进行控制拿数据的位置,并且拿到桩号里面的名字
+//                    for (int i = slSheet.getFirstRowNum(); i <= slSheet.getPhysicalNumberOfRows(); i++) {
+//
+//                    }
+//
+//                    XSSFCell xmname = slSheet.getRow(1).getCell(1);//项目名
+//                    XSSFCell htdname = slSheet.getRow(1).getCell(17);//合同段名
+//                    Map map = new HashMap();
+//
+//                    if (proname.equals(xmname.toString()) && htd.equals(htdname.toString())) {
+//                        //获取到最后一行
+//                        int lastRowNum = slSheet.getLastRowNum();
+//                        /*slSheet.getRow(lastRowNum).getCell(3).setCellType(CellType.STRING);
+//                        slSheet.getRow(lastRowNum).getCell(6).setCellType(CellType.STRING);
+//                        slSheet.getRow(lastRowNum).getCell(10).setCellType(CellType.STRING);
+//
+//                        slSheet.getRow(lastRowNum-1).getCell(4).setCellType(CellType.STRING);
+//
+//                        slSheet.getRow(lastRowNum-2).getCell(15).setCellType(CellType.STRING);
+//                        slSheet.getRow(lastRowNum-2).getCell(16).setCellType(CellType.STRING);
+//                        slSheet.getRow(lastRowNum-2).getCell(10).setCellType(CellType.STRING);
+//                        slSheet.getRow(3).getCell(2).setCellType(CellType.STRING);
+//
+//                        jgmap.put("检测点数",decf.format(Double.valueOf(slSheet.getRow(lastRowNum).getCell(3).getStringCellValue())));
+//                        jgmap.put("合格点数",decf.format(Double.valueOf(slSheet.getRow(lastRowNum).getCell(6).getStringCellValue())));
+//                        jgmap.put("合格率",df.format(Double.valueOf(slSheet.getRow(lastRowNum).getCell(10).getStringCellValue())));
+//                        jgmap.put("允许偏差",slSheet.getRow(lastRowNum-1).getCell(4).getStringCellValue());
+//
+//                        jgmap.put("最大值",slSheet.getRow(lastRowNum-2).getCell(15).getStringCellValue());
+//                        jgmap.put("最小值",slSheet.getRow(lastRowNum-2).getCell(16).getStringCellValue());
+//                        jgmap.put("代表值",slSheet.getRow(lastRowNum-2).getCell(10).getStringCellValue());
+//                        jgmap.put("设计值",slSheet.getRow(3).getCell(2).getStringCellValue());
+//                        mapList.add(jgmap);*/
+//                        //jgmap.add(map);
+//                        slSheet.getRow(lastRowNum).getCell(5).setCellType(CellType.STRING);//总点数
+//                        slSheet.getRow(lastRowNum).getCell(7).setCellType(CellType.STRING);//合格点数
+//                        slSheet.getRow(lastRowNum).getCell(9).setCellType(CellType.STRING);//合格率
+//
+//                        slSheet.getRow(lastRowNum).getCell(14).setCellType(CellType.STRING);//总点数
+//                        slSheet.getRow(lastRowNum).getCell(16).setCellType(CellType.STRING);//合格点数
+//                        slSheet.getRow(lastRowNum).getCell(18).setCellType(CellType.STRING);//合格率
+//
+//                        slSheet.getRow(6).getCell(7).setCellType(CellType.STRING);
+//                        slSheet.getRow(6).getCell(16).setCellType(CellType.STRING);
+//
+//                        slSheet.getRow(lastRowNum-1).getCell(21).setCellType(CellType.STRING);
+//                        slSheet.getRow(lastRowNum-1).getCell(22).setCellType(CellType.STRING);
+//
+//                        slSheet.getRow(lastRowNum-1).getCell(16).setCellType(CellType.STRING);
+//                        slSheet.getRow(lastRowNum-1).getCell(7).setCellType(CellType.STRING);
+//
+//                        slSheet.getRow(lastRowNum-1).getCell(23).setCellType(CellType.STRING);
+//                        slSheet.getRow(lastRowNum-1).getCell(24).setCellType(CellType.STRING);
+//                        slSheet.getRow(lastRowNum-1).getCell(25).setCellType(CellType.STRING);
+//                        slSheet.getRow(lastRowNum-1).getCell(26).setCellType(CellType.STRING);
+//
+//
+//                        double zds = Double.valueOf(slSheet.getRow(lastRowNum).getCell(5).getStringCellValue());
+//                        double hgds = Double.valueOf(slSheet.getRow(lastRowNum).getCell(7).getStringCellValue());
+//                        double hgl = Double.valueOf(slSheet.getRow(lastRowNum).getCell(9).getStringCellValue());
+//
+//                        double zds1 = Double.valueOf(slSheet.getRow(lastRowNum).getCell(14).getStringCellValue());
+//                        double hgds1 = Double.valueOf(slSheet.getRow(lastRowNum).getCell(16).getStringCellValue());
+//                        double hgl1 = Double.valueOf(slSheet.getRow(lastRowNum).getCell(18).getStringCellValue());
+//                        String zdsz1 = decf.format(zds);
+//                        String hgdsz1 = decf.format(hgds);
+//                        String hglz1 = df.format(hgl);
+//                        map.put("路面类型", wb.getSheetName(j));
+//                        map.put("上面层厚度检测点数", zdsz1);
+//                        map.put("上面层厚度合格点数", hgdsz1);
+//                        map.put("上面层厚度合格率", hglz1);
+//                        map.put("上面层设计值", slSheet.getRow(6).getCell(7).getStringCellValue());
+//                        map.put("上面层代表值", slSheet.getRow(lastRowNum-1).getCell(21).getStringCellValue());
+//                        map.put("上面层平均值最大值", slSheet.getRow(lastRowNum-1).getCell(23).getStringCellValue());
+//                        map.put("上面层平均值最小值", slSheet.getRow(lastRowNum-1).getCell(24).getStringCellValue());
+//
+//                        map.put("总厚度检测点数", decf.format(zds1));
+//                        map.put("总厚度合格点数", decf.format(hgds1));
+//                        map.put("总厚度合格率", df.format(hgl1));
+//                        map.put("总厚度设计值", slSheet.getRow(6).getCell(16).getStringCellValue());
+//                        map.put("总厚度代表值", slSheet.getRow(lastRowNum-1).getCell(22).getStringCellValue());
+//                        map.put("总厚度平均值最大值", slSheet.getRow(lastRowNum-1).getCell(25).getStringCellValue());
+//                        map.put("总厚度平均值最小值", slSheet.getRow(lastRowNum-1).getCell(26).getStringCellValue());
+//                        mapList.add(map);
+//                    }
+//
+//
+//                }
+//            }
             return mapList;
         }
     }

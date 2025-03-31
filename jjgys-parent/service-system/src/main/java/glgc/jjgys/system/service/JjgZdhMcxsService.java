@@ -23,7 +23,7 @@ public interface JjgZdhMcxsService extends IService<JjgZdhMcxs> {
 
     boolean generateJdb(CommonInfoVo commonInfoVo) throws IOException, ParseException;
 
-    List<Map<String, Object>> lookJdbjg(CommonInfoVo commonInfoVo) throws IOException;
+    List<Map<String, Object>> lookJdbjg(CommonInfoVo commonInfoVo, int flag) throws IOException;
 
     void exportmcxs(HttpServletResponse response, String cdsl) throws IOException;
 
