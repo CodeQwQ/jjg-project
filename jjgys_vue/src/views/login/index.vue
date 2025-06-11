@@ -6,7 +6,7 @@
       <img src="@/assets/login/logo.png" style="clear: both;display: block;margin: auto; width: 150px;height: 150px">
     </div>
 
-    <h3 class="title-name">陕西交控工程技术有限公司</h3>
+    <!--<h3 class="title-name">陕西交控工程技术有限公司</h3>-->
 
     <el-form ref="loginForm" :model="loginForm" :rules="loginRules" class="login-form" auto-complete="on"
       label-position="left">
@@ -14,7 +14,7 @@
 
 
       <div class="title-container">
-        <h3 class="title">公路工程交（竣）工验收检测系统</h3>
+        <h3 class="title">公路工程交（竣）工验收检测系统(测试系统)</h3>
       </div>
 
       <el-form-item prop="username">

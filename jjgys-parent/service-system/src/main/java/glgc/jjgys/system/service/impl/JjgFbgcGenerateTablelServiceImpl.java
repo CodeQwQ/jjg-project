@@ -294,6 +294,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
 
         List<Map<String,Object>> resultlist = new ArrayList<>();
         List<String> filteredFiles = filterFiles(path);
+        boolean ysd = false; // 由于之前的旧逻辑一下子就处理了两个表，所以用这个变量专门控制压实度是否已经添加过，防止重复添加
 
         for (String value : filteredFiles) {
             switch (value) {
@@ -730,17 +731,38 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
                     resultlist.addAll(resultysd);
                     break;*/
                 case "13路面弯沉(贝克曼梁法).xlsx":
-                    List<Map<String, Object>> lmwclist = jjgFbgcLmgcLmwcService.lookJdbjg(commonInfoVo);
+                    List<Map<String, Object>> lmwclist = jjgFbgcLmgcLmwcService.lookJdbjg(commonInfoVo, flag);
                     List<Map<String, Object>> resultwc = new ArrayList<>();
-                    Map<String, Object> wcMap = new HashMap<>();
-                    wcMap.put("filename","详见《路面弯沉质量鉴定结果汇总表》检测"+lmwclist.get(0).get("检测单元数")+"个评定单元,合格"+lmwclist.get(0).get("合格单元数")+"个评定单元");
-                    wcMap.put("ccname","△沥青路面弯沉(贝克曼梁法)");
-                    wcMap.put("ccname2","贝克曼梁法");
-                    wcMap.put("sheetname","分部-路面");
-                    wcMap.put("fbgc","路面面层");
-                    wcMap.put("合格率",lmwclist.get(0).get("合格率"));
-                    wcMap.put("yxps",lmwclist.get(0).get("规定值"));
-                    resultwc.add(wcMap);
+                    if(flag == 1){
+                        Map<String, Object> wcMap = new HashMap<>();
+                        wcMap.put("filename","详见《路面弯沉质量鉴定结果汇总表》检测"+lmwclist.get(0).get("检测单元数")+"个评定单元,合格"+lmwclist.get(0).get("合格单元数")+"个评定单元");
+                        wcMap.put("ccname","△沥青路面弯沉(贝克曼梁法)");
+                        wcMap.put("ccname2","贝克曼梁法");
+                        wcMap.put("sheetname","分部-路面");
+                        wcMap.put("fbgc","路面面层");
+                        wcMap.put("合格率",lmwclist.get(0).get("合格率"));
+                        wcMap.put("yxps",lmwclist.get(0).get("规定值"));
+                        resultwc.add(wcMap);
+                    }else if(flag==2){
+                        // 这一part只有路面互通和连接线，没有桥没有隧
+                        for (Map<String, Object> map : lmwclist) {
+                            Map<String, Object> wclcfMap = new HashMap<>();
+                            if (map.get("分部工程名称").toString().equals("路面/互通类")){
+                                wclcfMap.put("filename","详见《路面弯沉质量鉴定结果汇总表》检测"+lmwclist.get(0).get("检测单元数")+"个评定单元,合格"+lmwclist.get(0).get("合格单元数")+"个评定单元");
+                                wclcfMap.put("ccname","△沥青路面弯沉(贝克曼梁法)");
+                            }else{
+                                wclcfMap.put("filename","详见《连接线路面弯沉质量鉴定结果汇总表》检测"+lmwclist.get(0).get("检测单元数")+"个评定单元,合格"+lmwclist.get(0).get("合格单元数")+"个评定单元");
+                                wclcfMap.put("ccname","△沥青路面弯沉(贝克曼梁法)(连接线)");
+                            }
+                            wclcfMap.put("ccname2","贝克曼梁法");
+                            wclcfMap.put("sheetname","分部-路面");
+                            wclcfMap.put("fbgc","路面面层");
+                            wclcfMap.put("合格率",lmwclist.get(0).get("合格率"));
+                            wclcfMap.put("yxps",lmwclist.get(0).get("规定值"));
+                            resultwc.add(wclcfMap);
+                        }
+                    }
+
                     resultlist.addAll(resultwc);
                     break;
                 case "13路面弯沉(落锤法).xlsx":
@@ -2518,8 +2540,12 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
                     break;
             }
             if (value.contains("12沥青路面压实度-")){
+                // 防止重复添加
+                if(ysd == true) continue;
+                else ysd = true;
+
                 //分工作簿
-                List<Map<String, Object>> list = jjgFbgcLmgcLqlmysdService.lookJdbjgbgzbg(commonInfoVo);
+                List<Map<String, Object>> list = jjgFbgcLmgcLqlmysdService.lookJdbjgbgzbg(commonInfoVo, flag);
                 List<Map<String, Object>> resultysd = new ArrayList<>();
                 double sdjcds = 0;
                 double sdhgds = 0;
@@ -2527,62 +2553,52 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
                 double lmhgds = 0;
                 String sdgdz="";
                 String lmgdz="";
+                 // 和之前不一样的是，这里不用再加了，因为在返回List的函数里面都已经加好了
+                // 所以主要就是判断是什么项
+
+
+                // 判断“路面类型”即可
                 for (Map<String, Object> map : list) {
-                    if (map.get("路面类型").toString().contains("隧道右幅") || map.get("路面类型").toString().contains("隧道左幅")){
-                        sdjcds += Double.valueOf(map.get("检测点数").toString());
-                        sdhgds += Double.valueOf(map.get("合格点数").toString());
-                        sdgdz = map.get("密度规定值").toString();
-
-                    }else {
-                        //if (map.get("路面类型").toString().contains("沥青路面压实度右幅") || map.get("路面类型").toString().contains("沥青路面压实度左幅")){
-                        lmjcds += Double.valueOf(map.get("检测点数").toString());
-                        lmhgds += Double.valueOf(map.get("合格点数").toString());
-                        lmgdz = map.get("密度规定值").toString();
-
-                    }
-                }
-                double gdz1 = 0;
-                if (!sdgdz.equals("")){
-                    gdz1 = Double.valueOf(sdgdz);
-                }
-
-                if (sdjcds!=0 && sdhgds!=0){
-                    String gdz2= String.valueOf(gdz1);
                     Map<String, Object> newMap1 = new HashMap<>();
-                    newMap1.put("filename","详见《沥青路面压实度质量鉴定表》检测"+decf.format(sdjcds)+"点,合格"+decf.format(sdhgds)+"点");
-                    newMap1.put("ccname", "△沥青路面压实度(隧道路面)");
-                    newMap1.put("ccname2", "隧道路面");
-                    newMap1.put("yxps", gdz2);
-                    newMap1.put("sheetname", "分部-路面");
+                    //不分离的
+                    String lmlx = map.get("路面类型").toString();
+                    String mcxx = ""; //面层信息
+                    if (lmlx.contains("-")){
+                        mcxx = lmlx.split("-")[1]; //面层信息
+                    }
+                    if(lmlx.contains("沥青路面压实度") && !lmlx.contains("沥青路面压实度匝道")){
+                        newMap1.put("filename","详见《沥青路面压实度质量鉴定表》检测"+map.get("检测点数")+"点,合格"+map.get("合格点数")+"点");
+                        newMap1.put("ccname", "△沥青路面压实度(主线"+ mcxx +")");
+                        newMap1.put("ccname2", "路面面层");
+                        newMap1.put("sheetname", "分部-路面");
+                    }else if(lmlx.contains("沥青路面压实度匝道")){
+                        newMap1.put("filename","详见《沥青路面压实度质量鉴定表》检测"+map.get("检测点数")+"点,合格"+map.get("合格点数")+"点");
+                        newMap1.put("ccname", "△沥青路面压实度(匝道"+ mcxx +")");
+                        newMap1.put("ccname2", "路面面层");
+                        newMap1.put("sheetname", "分部-路面");
+                    }else if(lmlx.contains("隧道")){
+                        newMap1.put("filename","详见《隧道沥青路面压实度质量鉴定表》检测"+map.get("检测点数")+"点,合格"+map.get("合格点数")+"点");
+                        newMap1.put("ccname", "△沥青路面压实度(隧道"+ mcxx +")");
+                        newMap1.put("ccname2", "隧道路面");
+                        if(flag == 1)  newMap1.put("sheetname", "分部-路面");
+                        else if(flag == 2) newMap1.put("sheetname", "分部-" + map.get("分部工程名称"));
+                    }else if(lmlx.contains("连接线")){
+                        newMap1.put("filename","详见《连接线沥青路面压实度质量鉴定表》检测"+map.get("检测点数")+"点,合格"+map.get("合格点数")+"点");
+                        newMap1.put("ccname", "△沥青路面压实度(连接线"+ mcxx +")");
+                        newMap1.put("ccname2", "连接线路面");
+                        newMap1.put("sheetname", "分部-路面");
+                    }
+                    newMap1.put("yxps", map.get("密度规定值"));
+
                     newMap1.put("fbgc", "路面面层");
-                    newMap1.put("检测点数", sdjcds);
-                    newMap1.put("合格点数", sdhgds);
-                    newMap1.put("合格率", (sdjcds != 0) ? df.format(sdhgds/sdjcds*100) : "0");
+                    newMap1.put("检测点数", map.get("检测点数"));
+                    newMap1.put("合格点数", map.get("合格点数"));
+                    newMap1.put("合格率", map.get("合格率"));
                     resultysd.add(newMap1);
                 }
-
-                if (lmjcds!=0 && lmhgds!=0){
-                    double gdz3 = 0;
-                    if (!lmgdz.equals("")){
-                        gdz3 = Double.valueOf(lmgdz);
-                    }
-                    String gdz4 = String.valueOf(gdz3);
-                    Map<String, Object> newMap2 = new HashMap<>();
-                    newMap2.put("filename","详见《沥青路面压实度质量鉴定表》检测"+decf.format(lmjcds)+"点,合格"+decf.format(lmhgds)+"点");
-                    newMap2.put("ccname", "△沥青路面压实度(路面面层)");
-                    newMap2.put("ccname2", "路面面层");
-                    newMap2.put("yxps", gdz4);
-                    newMap2.put("sheetname", "分部-路面");
-                    newMap2.put("fbgc", "路面面层");
-                    newMap2.put("检测点数", lmjcds);
-                    newMap2.put("合格点数", lmhgds);
-                    newMap2.put("合格率", (lmjcds != 0) ? df.format(lmhgds/lmjcds*100) : "0");
-                    resultysd.add(newMap2);
-                }
-
                 resultlist.addAll(resultysd);
-
-            } else if (value.contains("34桥面平整度3米直尺法-")){
+            }
+            else if (value.contains("34桥面平整度3米直尺法-")){
                 List<Map<String, Object>> list = jjgFbgcQlgcQmpzdService.lookjg(commonInfoVo,value);
                 List<Map<String, Object>> pzdlist = new ArrayList<>();
                 for (Map<String, Object> map : list) {
@@ -14190,7 +14206,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
         DecimalFormat df = new DecimalFormat("0.00");
         DecimalFormat decf = new DecimalFormat("0.##");
         //压实度
-        List<Map<String, Object>> list1 = jjgFbgcLmgcLqlmysdService.lookJdbjgbgzbg(commonInfoVo);
+        List<Map<String, Object>> list1 = jjgFbgcLmgcLqlmysdService.lookJdbjgbgzbg(commonInfoVo, 1);
         if (CollectionUtils.isNotEmpty(list1)){
             double ysdzds = 0;
             double ysdhgds = 0;
@@ -14203,7 +14219,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
             resultmap.put("ysdhgl",ysdzds!=0 ? df.format(ysdhgds/ysdzds*100) : 0);
         }
         //路面弯沉
-        List<Map<String, Object>> list2 = jjgFbgcLmgcLmwcService.lookJdbjg(commonInfoVo);
+        List<Map<String, Object>> list2 = jjgFbgcLmgcLmwcService.lookJdbjg(commonInfoVo,1);
         List<Map<String, Object>> listlcf = jjgFbgcLmgcLmwcLcfService.lookJdbjg(commonInfoVo, 1);
         double wczds = 0;
         double wchgds = 0;
@@ -14455,7 +14471,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
         List<Map<String, Object>> resultList = new ArrayList<>();
         Map resultmap = new HashMap();
         //List<Map<String, Object>> list1 = getsdysdData(commonInfoVo);
-        List<Map<String, Object>> list1 = jjgFbgcLmgcLqlmysdService.lookJdbjgbgzbg(commonInfoVo);
+        List<Map<String, Object>> list1 = jjgFbgcLmgcLqlmysdService.lookJdbjgbgzbg(commonInfoVo, 1);
 
         if (CollectionUtils.isNotEmpty(list1)){
             double zds = 0,hgds = 0;
@@ -16279,7 +16295,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
         Map resultmap = new HashMap<>();
         //处理一下list1，将所有的检测点数和合格点数相加，算合格率
         //List<Map<String, Object>> list1 = getlmysdData(commonInfoVo);
-        List<Map<String, Object>> list1 = jjgFbgcLmgcLqlmysdService.lookJdbjgbgzbg(commonInfoVo);
+        List<Map<String, Object>> list1 = jjgFbgcLmgcLqlmysdService.lookJdbjgbgzbg(commonInfoVo, 1);
         if (CollectionUtils.isNotEmpty(list1)){
             double zds = 0,ljxzds = 0;
             double hgds = 0,ljxhgds = 0;
@@ -17726,7 +17742,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
         DecimalFormat decf = new DecimalFormat("0.#");
         List<Map<String, Object>> resultList = new ArrayList<>();
         List<Map<String, Object>> listlcf = jjgFbgcLmgcLmwcLcfService.lookJdbjg(commonInfoVo,1);
-        List<Map<String, Object>> listbrml = jjgFbgcLmgcLmwcService.lookJdbjg(commonInfoVo);
+        List<Map<String, Object>> listbrml = jjgFbgcLmgcLmwcService.lookJdbjg(commonInfoVo,1);
         if (listlcf != null || listbrml != null){
             if (listlcf != null && listbrml != null) {
                 listlcf.addAll(listbrml);
@@ -17908,7 +17924,7 @@ public class JjgFbgcGenerateTablelServiceImpl extends ServiceImpl<JjgFbgcGenerat
      */
     private List<Map<String, Object>> getlmwcData(CommonInfoVo commonInfoVo) throws IOException {
         List<Map<String, Object>> resultList = new ArrayList<>();
-        List<Map<String, Object>> list = jjgFbgcLmgcLmwcService.lookJdbjg(commonInfoVo);
+        List<Map<String, Object>> list = jjgFbgcLmgcLmwcService.lookJdbjg(commonInfoVo,1);
         if (list!=null && list.size()>0){
             for (Map<String, Object> stringObjectMap : list) {
                 Map map = new HashMap();

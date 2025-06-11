@@ -27,6 +27,8 @@
           and lqs not like '%隧%'
           and lqs not like '%连接线%'
           and lqs not like '路'
+          and sffl like '否'
+
         <if test="idlist!=null">
             and userid in
             <foreach item="item" index="index" collection="idlist"
@@ -47,6 +49,7 @@
         and lqs not like '%隧%'
         and lqs not like '%连接线%'
         and lqs not like '路'
+        and sffl like '否'
         <if test="idlist!=null">
             and userid in
             <foreach item="item" index="index" collection="idlist"
@@ -67,6 +70,7 @@
           and lqs like '%连接线%'
           and lqs not like '%隧%'
           and lqs not like '路'
+          and sffl like '否'
         <if test="idlist!=null">
             and userid in
             <foreach item="item" index="index" collection="idlist"
@@ -86,6 +90,7 @@
           and lqs like '%连接线%'
           and lqs like '%隧%'
           and lqs not like '路'
+          and sffl like '否'
         <if test="idlist!=null">
             and userid in
             <foreach item="item" index="index" collection="idlist"
@@ -105,6 +110,8 @@
           and cw = '上面层'
           and (zh LIKE 'Z%' OR zh LIKE 'K%')
           AND (lqs = '路' OR lqs LIKE '%桥%')
+        and sffl = #{sffl}
+
         <if test="idlist!=null">
             and userid in
             <foreach item="item" index="index" collection="idlist"
@@ -124,6 +131,7 @@
         and (zh LIKE 'Z%' OR zh LIKE 'K%')
           AND (lqs = '路' OR lqs LIKE '%桥%')
           AND (cw = '中面层' OR cw = '下面层')
+        and sffl = #{sffl}
         <if test="idlist!=null">
             and userid in
             <foreach item="item" index="index" collection="idlist"
@@ -144,6 +152,7 @@
           AND (lqs = '路' OR lqs LIKE '%桥%')
           and cw = '上面层'
           and zh LIKE 'Y%'
+        and sffl = #{sffl}
         <if test="idlist!=null">
             and userid in
             <foreach item="item" index="index" collection="idlist"
@@ -164,6 +173,7 @@
           and zh LIKE 'Y%'
           AND (lqs = '路' OR lqs LIKE '%桥%')
           AND (cw = '中面层' OR cw = '下面层')
+        and sffl = #{sffl}
         <if test="idlist!=null">
             and userid in
             <foreach item="item" index="index" collection="idlist"
@@ -184,6 +194,7 @@
           and cw = '上面层'
         and (zh LIKE 'Z%' OR zh LIKE 'K%')
           and lqs LIKE '%隧%'
+        and sffl = #{sffl}
         <if test="idlist!=null">
             and userid in
             <foreach item="item" index="index" collection="idlist"
@@ -204,6 +215,7 @@
           and cw = '上面层'
           and zh LIKE 'Y%'
           and lqs LIKE '%隧%'
+        and sffl = #{sffl}
         <if test="idlist!=null">
             and userid in
             <foreach item="item" index="index" collection="idlist"
@@ -224,6 +236,7 @@
         and (zh LIKE 'Z%' OR zh LIKE 'K%')
           and lqs LIKE '%隧%'
           AND (cw = '中面层' OR cw = '下面层')
+        and sffl = #{sffl}
         <if test="idlist!=null">
             and userid in
             <foreach item="item" index="index" collection="idlist"
@@ -244,6 +257,7 @@
           and zh LIKE 'Y%'
           and lqs LIKE '%隧%'
           AND (cw = '中面层' OR cw = '下面层')
+        and sffl = #{sffl}
         <if test="idlist!=null">
             and userid in
             <foreach item="item" index="index" collection="idlist"
@@ -260,12 +274,13 @@
         WHERE proname = #{proname}
           and htd = #{htd}
           and fbgc = #{fbgc}
-        and (zh LIKE 'Z%' OR zh LIKE 'K%')
+          and (zh like 'Z%' or (zh like '%K%' and zh not like 'YK%'))
           and cw = '上面层'
           and lqs not like '路'
           and lqs not like '%桥%'
           and lqs not like '%隧%'
           and lqs not like '%连接线%'
+        and sffl = #{sffl}
         <if test="idlist!=null">
             and userid in
             <foreach item="item" index="index" collection="idlist"
@@ -288,6 +303,7 @@
         and lqs not like '%桥%'
         and lqs not like '%隧%'
         and lqs not like '%连接线%'
+        and sffl = #{sffl}
         <if test="idlist!=null">
             and userid in
             <foreach item="item" index="index" collection="idlist"
@@ -305,11 +321,12 @@
           and htd = #{htd}
           and fbgc = #{fbgc}
           AND (cw = '中面层' OR cw = '下面层')
-        and (zh LIKE 'Z%' OR zh LIKE 'K%')
-          and lqs not like '%隧%'
+        and (zh like 'Z%' or (zh like '%K%' and zh not like 'YK%'))
+        and lqs not like '%隧%'
           and lqs not like '路'
           and lqs not like '%桥%'
           and lqs not like '%连接线%'
+        and sffl = #{sffl}
         <if test="idlist!=null">
             and userid in
             <foreach item="item" index="index" collection="idlist"
@@ -333,6 +350,7 @@
         and lqs not like '路'
         and lqs not like '%桥%'
         and lqs not like '%连接线%'
+        and sffl = #{sffl}
         <if test="idlist!=null">
             and userid in
             <foreach item="item" index="index" collection="idlist"
@@ -353,6 +371,7 @@
           and cw = '上面层'
           and lqs not like '%隧%'
           and lqs like '%连接线%'
+        and sffl = #{sffl}
         <if test="idlist!=null">
             and userid in
             <foreach item="item" index="index" collection="idlist"
@@ -373,6 +392,7 @@
           AND (cw = '中面层' OR cw = '下面层')
           and lqs not like '%隧%'
           and lqs like '%连接线%'
+        and sffl = #{sffl}
         <if test="idlist!=null">
             and userid in
             <foreach item="item" index="index" collection="idlist"
@@ -394,6 +414,7 @@
           and cw = '上面层'
           and lqs like '%隧%'
           and lqs like '%连接线%'
+        and sffl = #{sffl}
         <if test="idlist!=null">
             and userid in
             <foreach item="item" index="index" collection="idlist"
@@ -415,6 +436,7 @@
           AND (cw = '中面层' OR cw = '下面层')
           and lqs like '%隧%'
           and lqs like '%连接线%'
+        and sffl = #{sffl}
         <if test="idlist!=null">
             and userid in
             <foreach item="item" index="index" collection="idlist"

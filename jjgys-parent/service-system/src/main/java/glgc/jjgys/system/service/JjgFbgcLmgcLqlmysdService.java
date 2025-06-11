@@ -6,7 +6,6 @@ import glgc.jjgys.model.projectvo.ljgc.CommonInfoVo;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletResponse;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.List;
@@ -38,5 +37,5 @@ public interface JjgFbgcLmgcLqlmysdService extends IService<JjgFbgcLmgcLqlmysd> 
 
     List<Map<String, Object>> selectsfl(String proname, String htd, List<Long> idlist);
 
-    List<Map<String, Object>> lookJdbjgbgzbg(CommonInfoVo commonInfoVo) throws IOException;
+    List<Map<String, Object>> lookJdbjgbgzbg(CommonInfoVo commonInfoVo, int flag) throws IOException;
 }

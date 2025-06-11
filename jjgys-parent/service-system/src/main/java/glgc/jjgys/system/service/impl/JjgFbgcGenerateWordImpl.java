@@ -616,7 +616,7 @@ public class JjgFbgcGenerateWordImpl extends ServiceImpl<JjgFbgcGenerateWordMapp
                         }
                     }
 
-                    List<Map<String, Object>> wclist = jjgFbgcLmgcLmwcService.lookJdbjg(commonInfoVo);
+                    List<Map<String, Object>> wclist = jjgFbgcLmgcLmwcService.lookJdbjg(commonInfoVo,1);
                     List<Map<String, Object>> wclcflist = jjgFbgcLmgcLmwcLcfService.lookJdbjg(commonInfoVo,1);
                     if (wclist != null && wclist.size() > 0){
                         for (Map<String, Object> stringObjectMap : wclist) {

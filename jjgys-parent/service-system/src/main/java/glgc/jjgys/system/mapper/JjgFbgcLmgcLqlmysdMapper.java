@@ -44,17 +44,17 @@ public interface JjgFbgcLmgcLqlmysdMapper extends BaseMapper<JjgFbgcLmgcLqlmysd>
 
     List<JjgFbgcLmgcLqlmysd> selectsdyfzxmc(String proname, String htd, String fbgc, String sffl, List<Long> idlist);
 
-    List<JjgFbgcLmgcLqlmysd> selectzdsmc(String proname, String htd, String fbgc, List<Long> idlist);
+    List<JjgFbgcLmgcLqlmysd> selectzdsmc(String proname, String htd, String fbgc, List<Long> idlist, String sffl);
 
-    List<JjgFbgcLmgcLqlmysd> selectzdsxmc(String proname, String htd, String fbgc, List<Long> idlist);
+    List<JjgFbgcLmgcLqlmysd> selectzdsxmc(String proname, String htd, String fbgc, List<Long> idlist, String sffl);
 
-    List<JjgFbgcLmgcLqlmysd> selectljxsmc(String proname, String htd, String fbgc, List<Long> idlist);
+    List<JjgFbgcLmgcLqlmysd> selectljxsmc(String proname, String htd, String fbgc, List<Long> idlist, String sffl);
 
-    List<JjgFbgcLmgcLqlmysd> selectljxzxmc(String proname, String htd, String fbgc, List<Long> idlist);
+    List<JjgFbgcLmgcLqlmysd> selectljxzxmc(String proname, String htd, String fbgc, List<Long> idlist, String sffl);
 
-    List<JjgFbgcLmgcLqlmysd> selectljxsdsmc(String proname, String htd, String fbgc, List<Long> idlist);
+    List<JjgFbgcLmgcLqlmysd> selectljxsdsmc(String proname, String htd, String fbgc, List<Long> idlist, String sffl);
 
-    List<JjgFbgcLmgcLqlmysd> selectljxsdzxmc(String proname, String htd, String fbgc, List<Long> idlist);
+    List<JjgFbgcLmgcLqlmysd> selectljxsdzxmc(String proname, String htd, String fbgc, List<Long> idlist, String sffl);
 
     int selectnum(String proname, String htd);
 
@@ -62,9 +62,9 @@ public interface JjgFbgcLmgcLqlmysdMapper extends BaseMapper<JjgFbgcLmgcLqlmysd>
 
     List<Map<String, Object>> selectsfl(String proname, String htd, List<Long> idlist);
 
-    List<JjgFbgcLmgcLqlmysd> selectzdyfsmc(String proname, String htd, String fbgc, List<Long> idlist);
+    List<JjgFbgcLmgcLqlmysd> selectzdyfsmc(String proname, String htd, String fbgc, List<Long> idlist, String sffl);
 
-    List<JjgFbgcLmgcLqlmysd> selectzdyfsxmc(String proname, String htd, String fbgc, List<Long> idlist);
+    List<JjgFbgcLmgcLqlmysd> selectzdyfsxmc(String proname, String htd, String fbgc, List<Long> idlist, String sffl);
 
     List<JjgFbgcLmgcLqlmysd> selectzdyf(String proname, String htd, String fbgc, List<Long> idlist);
 }

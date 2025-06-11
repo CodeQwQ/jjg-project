@@ -938,10 +938,9 @@ public class JjgFbgcLmgcGslqlmhdzxfServiceImpl extends ServiceImpl<JjgFbgcLmgcGs
                 String type = data.get(0).getLx();
                 int index = 6;
                 // 表头信息,只有第一次填写
-
-                sheet.getRow(1 ).getCell(1).setCellValue(data.get(0).getProname());
-                sheet.getRow(1 ).getCell(17).setCellValue(data.get(0).getHtd());
-                sheet.getRow(2 ).getCell(1).setCellValue(data.get(0).getFbgc());
+                sheet.getRow(1).getCell(1).setCellValue(data.get(0).getProname());
+                sheet.getRow(1).getCell(17).setCellValue(data.get(0).getHtd());
+                sheet.getRow(2).getCell(1).setCellValue(data.get(0).getFbgc());
 
                 if(type.contains("隧")){
                     sheet.getRow(2 + row).getCell(9).setCellValue("隧道路面");
@@ -1008,7 +1007,7 @@ public class JjgFbgcLmgcGslqlmhdzxfServiceImpl extends ServiceImpl<JjgFbgcLmgcGs
      * comment：这个函数比较扭曲，怕长时间忘记，为了后面的维护者能更快地理解这个函数，做以下思路说明：（2025.2.26）
      * 1. 首先分两种情况，第一种是row的值为0，一种是其他，原因是原本这个代码的逻辑只能一次性创建完所有的表格，但是后面甲方提出得分开不同的隧道等，
      * 必须分开创建，而且由于一开始表格是空的，可以自己复制自己。这个row等于0是第一个开发者写的代码，我其实不太懂为什么要这样操作，所以在row!=0
-     * 的情况我都简化了，无论是第一个还是后面的表，我都始终复制18行。
+     * 的情况我都简化了，无论是第一个还是后面的表，我都始终复制18行。（后面发现，因为第一个表已经存在）
      * 2. 接着copyRows函数其实不需要步入去看懂，就是把源表的start到end行的内容复制到目标表的pposition位置，注意从0开始，有点绕的
      * 3. 总的就是，复制表头+数据填写区+最后复制“评定”。难在控制行复制，很绕。
      *

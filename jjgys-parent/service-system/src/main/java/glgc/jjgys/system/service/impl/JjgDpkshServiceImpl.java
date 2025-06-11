@@ -1339,7 +1339,7 @@ public class JjgDpkshServiceImpl extends ServiceImpl<JjgDpkshMapper,Object> impl
                     lm1hgds+=Double.valueOf(h);
                 }
             }
-            List<Map<String, Object>> list8 = jjgFbgcLmgcLmwcService.lookJdbjg(commonInfoVo);
+            List<Map<String, Object>> list8 = jjgFbgcLmgcLmwcService.lookJdbjg(commonInfoVo,1);
             if (list8 !=null && !list8.isEmpty()){
                 for (Map<String, Object> map : list8) {
                     String z = map.get("检测单元数").toString();
@@ -1993,7 +1993,7 @@ public class JjgDpkshServiceImpl extends ServiceImpl<JjgDpkshMapper,Object> impl
                     }
                 }
 
-                List<Map<String, Object>> list8 = jjgFbgcLmgcLmwcService.lookJdbjg(commonInfoVo);
+                List<Map<String, Object>> list8 = jjgFbgcLmgcLmwcService.lookJdbjg(commonInfoVo,1);
                 if (list8 !=null && !list8.isEmpty()){
                     for (Map<String, Object> map : list8) {
                         String z = map.get("检测单元数").toString();
@@ -2766,7 +2766,7 @@ public class JjgDpkshServiceImpl extends ServiceImpl<JjgDpkshMapper,Object> impl
                     }
                 }
 
-                List<Map<String, Object>> list8 = jjgFbgcLmgcLmwcService.lookJdbjg(commonInfoVo);
+                List<Map<String, Object>> list8 = jjgFbgcLmgcLmwcService.lookJdbjg(commonInfoVo,1);
                 if (list8 !=null && !list8.isEmpty()){
                     for (Map<String, Object> map : list8) {
                         String z = map.get("检测单元数").toString();

@@ -37,6 +37,8 @@ import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -1114,7 +1116,7 @@ public class JjgFbgcLmgcLmwcServiceImpl extends ServiceImpl<JjgFbgcLmgcLmwcMappe
      * @return
      */
     @Override
-    public List<Map<String, Object>> lookJdbjg(CommonInfoVo commonInfoVo) throws IOException {
+    public List<Map<String, Object>> lookJdbjg(CommonInfoVo commonInfoVo, int flag) throws IOException {
         String proname = commonInfoVo.getProname();
         String htd = commonInfoVo.getHtd();
         String title = "弯沉质量鉴定结果汇总表";
@@ -1145,11 +1147,13 @@ public class JjgFbgcLmgcLmwcServiceImpl extends ServiceImpl<JjgFbgcLmgcLmwcMappe
                 int pddynum = slSheet.getLastRowNum();
                 List<Map<String, Object>> tempmapList = new ArrayList<>();
                 for (int i = 5;i<pddynum-1;i++){
+                    slSheet.getRow(i).getCell(1).setCellType(CellType.STRING);// 检测段落
                     slSheet.getRow(i).getCell(5).setCellType(CellType.STRING);//验收弯沉值（0.01mm）
                     slSheet.getRow(i).getCell(6).setCellType(CellType.STRING);//弯沉代表值
                     slSheet.getRow(i).getCell(7).setCellType(CellType.STRING);//弯沉代表值
                     slSheet.getRow(i).getCell(8).setCellType(CellType.STRING);//弯沉代表值
                     Map<String,Object> maptemp = new HashMap<>();
+                    String name = processString(slSheet.getRow(i).getCell(1).getStringCellValue());
                     String value1 = slSheet.getRow(i).getCell(5).getStringCellValue();
                     String value2 = slSheet.getRow(i).getCell(6).getStringCellValue();
                     String value3 = slSheet.getRow(i).getCell(7).getStringCellValue();
@@ -1162,32 +1166,91 @@ public class JjgFbgcLmgcLmwcServiceImpl extends ServiceImpl<JjgFbgcLmgcLmwcMappe
                         }else if ("×".equals(value4)){
                             maptemp.put("wcjl","不合格");
                         }
+                        maptemp.put("jcdl",name);
                         tempmapList.add(maptemp);
                     }
                 }
-                //按yswcz进行分组统计wcdbz的最大值和最小值，以及总点数，合格点数，合格率
-                Map<String, List<Map<String, Object>>> result = tempmapList.stream()
-                        .collect(Collectors.groupingBy(map -> (String) map.get("yswcz")));
-                result.forEach((group, grouphtdData) -> {
-                    int zds = grouphtdData.size();
-                    int count=0;
-                    for (Map<String, Object> grouphtdDatum : grouphtdData) {
-                        String wcjl = grouphtdDatum.get("wcjl").toString();
-                        if ("合格".equals(wcjl)){
-                            count++;
-                        }
-                    }
-                    Map<String, Object> map = new HashMap<>();
-                    map.put("max", decf.format(findMaxValue(grouphtdData, "wcdbz")));
-                    map.put("min",decf.format(findMinValue(grouphtdData, "wcdbz")));
-                    map.put("代表值",decf.format(findMinValue(grouphtdData, "wcdbz"))+"~"+decf.format(findMaxValue(grouphtdData, "wcdbz")));
-                    map.put("规定值",group);
-                    map.put("检测单元数",zds);
-                    map.put("合格单元数",count);
-                    map.put("合格率",(zds != 0) ? df.format(count/zds*100) : "0");
-                    mapList.add(map);
+                if(flag == 1) {
 
-                });
+                    //按yswcz进行分组统计wcdbz的最大值和最小值，以及总点数，合格点数，合格率
+                    Map<String, List<Map<String, Object>>> result = tempmapList.stream()
+                            .collect(Collectors.groupingBy(map -> (String) map.get("yswcz")));
+                    result.forEach((group, grouphtdData) -> {
+                        int zds = grouphtdData.size();
+                        int count=0;
+                        for (Map<String, Object> grouphtdDatum : grouphtdData) {
+                            String wcjl = grouphtdDatum.get("wcjl").toString();
+                            if ("合格".equals(wcjl)){
+                                count++;
+                            }
+                        }
+                        Map<String, Object> map = new HashMap<>();
+                        map.put("max", decf.format(findMaxValue(grouphtdData, "wcdbz")));
+                        map.put("min",decf.format(findMinValue(grouphtdData, "wcdbz")));
+                        map.put("代表值",decf.format(findMinValue(grouphtdData, "wcdbz"))+"~"+decf.format(findMaxValue(grouphtdData, "wcdbz")));
+                        map.put("规定值",group);
+                        map.put("检测单元数",zds);
+                        map.put("合格单元数",count);
+                        map.put("合格率",(zds != 0) ? df.format(count/zds*100) : "0");
+                        mapList.add(map);
+
+                    });
+                }else if(flag == 2){
+                    // 按照验收弯沉值 + 检测段落进行分组，模仿上面写即可了
+                    Map<String, List<Map<String, Object>>> result = tempmapList.stream()
+                            .collect(Collectors.groupingBy(map -> {
+                                // 动态生成分组键
+                                String fbgcmc = map.get("jcdl").toString();
+                                String yswcz = map.get("yswcz").toString();
+
+                                // 判断是否符合特殊分组条件
+                                if (fbgcmc.equals("路面") || fbgcmc.contains("互通")) {
+                                    return yswcz + "|SPECIAL"; // 特殊分组标记
+                                } else {
+                                    return yswcz + "|NORMAL|" + fbgcmc; // 普通分组标记
+                                }
+                            }));
+
+                    result.forEach((group, grouphtdData) -> {
+                        // 公共计算逻辑
+                        int zds = grouphtdData.size();
+                        long count = grouphtdData.stream()
+                                .filter(m -> "合格".equals(m.get("wcjl").toString()))
+                                .count();
+
+                        // 解析分组键
+                        String[] segments = group.split("\\|");
+                        String yswczValue = segments[0];
+                        String groupType = segments[1];
+                        String fbgcmcValue;
+
+                        // 根据分组类型设置工程名称
+                        if ("SPECIAL".equals(groupType)) {
+                            // 合并显示特殊分组的名称
+                            fbgcmcValue = "路面/互通类";
+                        } else {
+                            // 普通分组取原始名称
+                            fbgcmcValue = segments[2];
+                        }
+
+                        Map<String, Object> map = new HashMap<>();
+                        // 公共字段
+                        map.put("max", decf.format(findMaxValue(grouphtdData, "wcdbz")));
+                        map.put("min", decf.format(findMinValue(grouphtdData, "wcdbz")));
+                        map.put("代表值", decf.format(findMinValue(grouphtdData, "wcdbz"))
+                                + "~" + decf.format(findMaxValue(grouphtdData, "wcdbz")));
+                        // 分组维度字段
+                        map.put("规定值", yswczValue);
+                        map.put("分部工程名称", fbgcmcValue);
+                        // 统计字段
+                        map.put("检测单元数", zds);
+                        map.put("合格单元数", count);
+                        map.put("合格率", (zds != 0) ? df.format((count * 100.0)/zds) : "0");
+
+                        mapList.add(map);
+                    });
+                }
+
                 /*List list = new ArrayList<>();
                 int lastRowNum1 = slSheet1.getLastRowNum();
                 for (int i = 5;i<lastRowNum1-1;i++){
@@ -1237,6 +1300,23 @@ public class JjgFbgcLmgcLmwcServiceImpl extends ServiceImpl<JjgFbgcLmgcLmwcMappe
                 return mapList;
             }
             return null;
+        }
+    }
+
+    // 这个函数是用来处理字符串，如果字符串中没有字母，则返回"路面"，如果有字母，则返回第一个字母之前的部分。
+    public static String processString(String s) {
+        Pattern p = Pattern.compile("[A-Za-z]");
+        Matcher matcher = p.matcher(s);
+        if (!matcher.find()) {
+            return "路面"; // 没有字母的情况
+        }
+
+        int firstLetterPos = matcher.start();
+        if (firstLetterPos == 0) {
+            return "路面";
+        } else {
+            String chinesePart = s.substring(0, firstLetterPos).trim();
+            return chinesePart.isEmpty() ? "路面" : chinesePart;
         }
     }
 

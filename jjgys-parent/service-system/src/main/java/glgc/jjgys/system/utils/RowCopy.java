@@ -8,6 +8,9 @@ import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 
 public class RowCopy {
 
@@ -241,6 +244,23 @@ public class RowCopy {
         }
 
         return result.toString();
+    }
+
+    // 这个函数是用来处理字符串，如果字符串中没有字母，则返回"路面"，如果有字母，则返回第一个字母之前的部分。
+    public static String processString(String s) {
+        Pattern p = Pattern.compile("[A-Za-z]");
+        Matcher matcher = p.matcher(s);
+        if (!matcher.find()) {
+            return "路面"; // 没有字母的情况
+        }
+
+        int firstLetterPos = matcher.start();
+        if (firstLetterPos == 0) {
+            return "路面";
+        } else {
+            String chinesePart = s.substring(0, firstLetterPos).trim();
+            return chinesePart.isEmpty() ? "路面" : chinesePart;
+        }
     }
 
 }

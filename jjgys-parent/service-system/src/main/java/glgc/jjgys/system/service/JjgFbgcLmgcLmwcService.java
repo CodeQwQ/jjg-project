@@ -22,7 +22,7 @@ public interface JjgFbgcLmgcLmwcService extends IService<JjgFbgcLmgcLmwc> {
 
     boolean generateJdb(CommonInfoVo commonInfoVo) throws IOException;
 
-    List<Map<String, Object>> lookJdbjg(CommonInfoVo commonInfoVo) throws IOException;
+    List<Map<String, Object>> lookJdbjg(CommonInfoVo commonInfoVo, int flag) throws IOException;
 
     void exportlmwc(HttpServletResponse response);
 

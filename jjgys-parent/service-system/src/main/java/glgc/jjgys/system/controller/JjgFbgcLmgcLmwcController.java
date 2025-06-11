@@ -141,7 +141,7 @@ public class JjgFbgcLmgcLmwcController {
     @ApiOperation("查看路面弯沉鉴定结果")
     @PostMapping("lookJdbjg")
     public Result lookJdbjg(@RequestBody CommonInfoVo commonInfoVo) throws IOException {
-        List<Map<String,Object>> jdjg = jjgFbgcLmgcLmwcService.lookJdbjg(commonInfoVo);
+        List<Map<String,Object>> jdjg = jjgFbgcLmgcLmwcService.lookJdbjg(commonInfoVo,1);
         System.out.println(jdjg);
         return Result.ok(jdjg);
 
