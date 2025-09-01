@@ -1,0 +1,20 @@
+# 交竣工项目环境配置需求
+
+## 后端环境配置要求
+
+### 基础运行环境
+- Java Development Kit (JDK): JDK 8 (项目配置指定版本)
+- 数据库: MySQL 5.7+
+
+
+### Maven依赖管理
+- Maven 3.6+
+- 项目采用多模块结构(parent/common/service-system)
+
+## 前端环境配置要求
+### 基础运行环境
+- Node.js: 8.9+ (推荐使用LTS版本)
+- npm: 3.0.0+
+
+
+
